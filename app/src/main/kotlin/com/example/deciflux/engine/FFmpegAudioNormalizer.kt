@@ -32,11 +32,22 @@ class FFmpegAudioNormalizer(private val context: Context) {
     private val pythonLibsDir: File
     private val nativeLibDir: File
 
+    @Volatile
+    private var currentProcess: Process? = null
+
     init {
         nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
         ffmpegBinary = File(nativeLibDir, "libffmpeg.so")
         ffmpegLibsDir = File(context.noBackupFilesDir, "youtubedl-android/packages/ffmpeg/usr/lib")
         pythonLibsDir = File(context.noBackupFilesDir, "youtubedl-android/packages/python/usr/lib")
+    }
+
+    fun cancelCurrentExecution() {
+        try {
+            currentProcess?.destroy()
+            currentProcess?.destroyForcibly()
+        } catch (_: Exception) {}
+        currentProcess = null
     }
 
     suspend fun normalizeVideo(
@@ -296,13 +307,20 @@ class FFmpegAudioNormalizer(private val context: Context) {
         env["LD_LIBRARY_PATH"] = ldPath
 
         val process = pb.start()
-        BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                line?.let { onLine(it) }
+        currentProcess = process
+        try {
+            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    line?.let { onLine(it) }
+                }
+            }
+            return process.waitFor()
+        } finally {
+            if (currentProcess === process) {
+                currentProcess = null
             }
         }
-        return process.waitFor()
     }
 
     private fun parseLoudnormJson(output: String): LoudnormAnalysis? {

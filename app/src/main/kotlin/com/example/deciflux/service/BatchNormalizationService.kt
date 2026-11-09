@@ -66,8 +66,11 @@ class BatchNormalizationService : Service() {
         return START_NOT_STICKY
     }
 
+    private var activeQueueJob: Job? = null
+
     private fun startBatchProcessing() {
         isBatchCancelled = false
+        activeQueueJob?.cancel()
         BatchQueueRepository.setProcessingState(processing = true, paused = false)
         wakeLock?.acquire(4 * 60 * 60 * 1000L) // Safety timeout: 4 hours
 
@@ -78,7 +81,7 @@ class BatchNormalizationService : Service() {
             max = 100
         )
 
-        serviceScope.launch {
+        activeQueueJob = serviceScope.launch {
             processQueue()
         }
     }
@@ -101,18 +104,37 @@ class BatchNormalizationService : Service() {
         BatchQueueRepository.addLog(
             TerminalLogEntry(tag = LogTag.INFO, message = "Resuming batch queue...")
         )
-        serviceScope.launch {
+        activeQueueJob?.cancel()
+        activeQueueJob = serviceScope.launch {
             processQueue()
         }
     }
 
     private fun cancelBatchProcessing() {
         isBatchCancelled = true
+        activeQueueJob?.cancel()
+        normalizer.cancelCurrentExecution()
+
+        val currentId = BatchQueueRepository.currentItemId.value
+        if (currentId != null) {
+            BatchQueueRepository.updateItem(currentId) {
+                if (it.status != BatchItemStatus.COMPLETED) {
+                    it.copy(status = BatchItemStatus.CANCELLED, statusMessage = "Stopped by user", progress = 0f)
+                } else it
+            }
+        }
+
         BatchQueueRepository.setProcessingState(processing = false, paused = false)
         BatchQueueRepository.setCurrentItem(null)
+        BatchQueueRepository.setSpeedAndEta("--", "--:--")
         BatchQueueRepository.addLog(
-            TerminalLogEntry(tag = LogTag.WARN, message = "Batch processing cancelled.")
+            TerminalLogEntry(tag = LogTag.WARN, message = "Batch processing stopped by user.")
         )
+
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        androidx.core.app.ServiceCompat.stopForeground(this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
@@ -196,6 +218,11 @@ class BatchNormalizationService : Service() {
                 }
             )
 
+            if (isBatchCancelled || !serviceScope.isActive) {
+                tempOutputFile.delete()
+                break
+            }
+
             if (result.isSuccess) {
                 val analysis = result.getOrNull()
                 // Atomic move to Movies/Deciflux MediaStore collection
@@ -223,6 +250,9 @@ class BatchNormalizationService : Service() {
                 )
             } else {
                 tempOutputFile.delete()
+                if (isBatchCancelled) {
+                    break
+                }
                 val errorReason = result.exceptionOrNull()?.localizedMessage ?: "Unknown error"
                 BatchQueueRepository.updateItem(item.id) {
                     it.copy(
@@ -238,6 +268,10 @@ class BatchNormalizationService : Service() {
                     )
                 )
             }
+        }
+
+        if (isBatchCancelled) {
+            return
         }
 
         // Batch finished
