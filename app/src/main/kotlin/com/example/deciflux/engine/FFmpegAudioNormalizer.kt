@@ -22,20 +22,25 @@ import java.io.InputStreamReader
  */
 class FFmpegAudioNormalizer(private val context: Context) {
 
+    private val nativeLibDir: File by lazy {
+        File(context.applicationInfo.nativeLibraryDir)
+    }
+
     private val ffmpegBinary: File by lazy {
-        File(context.filesDir.parentFile, "no_backup/youtubedl-android/packages/ffmpeg/usr/bin/ffmpeg")
+        val libBin = File(nativeLibDir, "libffmpeg.so")
+        if (libBin.exists()) {
+            libBin
+        } else {
+            File(context.noBackupFilesDir, "youtubedl-android/packages/ffmpeg/usr/bin/ffmpeg")
+        }
     }
 
     private val ffmpegLibsDir: File by lazy {
-        File(context.filesDir.parentFile, "no_backup/youtubedl-android/packages/ffmpeg/usr/lib")
+        File(context.noBackupFilesDir, "youtubedl-android/packages/ffmpeg/usr/lib")
     }
 
     private val pythonLibsDir: File by lazy {
-        File(context.filesDir.parentFile, "no_backup/youtubedl-android/packages/python/usr/lib")
-    }
-
-    private val nativeLibDir: File by lazy {
-        File(context.applicationInfo.nativeLibraryDir)
+        File(context.noBackupFilesDir, "youtubedl-android/packages/python/usr/lib")
     }
 
     @Volatile
@@ -128,11 +133,12 @@ class FFmpegAudioNormalizer(private val context: Context) {
                 com.yausername.youtubedl_android.YoutubeDL.getInstance().init(context)
                 com.yausername.ffmpeg.FFmpeg.getInstance().init(context)
             } catch (t: Throwable) {
-                Log.w(TAG, "On-demand FFmpeg/packages init: ${t.message}")
+                Log.w(TAG, "On-demand FFmpeg/packages init: ${t.message}", t)
+                onLog(TerminalLogEntry(tag = LogTag.WARN, message = "Native engine init notice: ${t.message}"))
             }
         }
         if (!ffmpegBinary.exists()) {
-            val errorMsg = "FFmpeg binary not found at ${ffmpegBinary.absolutePath}. Please check device ABI."
+            val errorMsg = "FFmpeg executable not found at ${ffmpegBinary.absolutePath}. Please check device ABI."
             onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
             return false
         }
