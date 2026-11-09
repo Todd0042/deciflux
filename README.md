@@ -15,6 +15,9 @@
 [![UI: Jetpack Compose Material 3](https://img.shields.io/badge/UI-Jetpack%20Compose%20Material%203-F472B6.svg)]()
 [![Architecture: arm64--v8a | armeabi--v7a | x86 | x86__64](https://img.shields.io/badge/ABI-Universal%20Native%20FFmpeg-38BDF8.svg)]()
 [![Engine: EBU R128 + dynaudnorm](https://img.shields.io/badge/DSP-EBU%20R128%20%7C%20dynaudnorm-34D399.svg)]()
+[![Signal Processing: ITU-R BS.1770](https://img.shields.io/badge/Signal%20Processing-ITU--R%20BS.1770--4%20Gating-0284C7.svg)]()
+[![Acoustic Modeling: dynaudnorm](https://img.shields.io/badge/Acoustic%20Modeling-Sliding%20Gaussian%20RMS-10B981.svg)]()
+[![Statistical Analysis: Dual--Pass Gating](https://img.shields.io/badge/Statistical%20Analysis-Dual--Stage%20Gated%20Loudness-8B5CF6.svg)]()
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Creator-F16061?style=flat&logo=ko-fi&logoColor=white)](https://ko-fi.com/todd0042)
 
 > **Deciflux is a modern native Android touch GUI app built with Jetpack Compose and Material 3 for high-speed, professional batch video audio normalization. Re-encodes audio tracks to broadcast loudness standards (EBU R128 / ITU-R BS.1770) or scene-by-scene dynamic leveling with zero video re-encoding (`-c:v copy`), running up to 30x realtime directly on your device with 100% offline privacy.**
@@ -25,6 +28,7 @@
 
 * **Part 1 — User Overview & Quick Start**
   * [⚡ What Is Deciflux?](#-what-is-deciflux)
+  * [🔬 Statistical Signal Analysis & Dynamic Acoustic Modeling](#-statistical-signal-analysis--dynamic-acoustic-modeling)
   * [🎯 Real-World Use Cases](#-real-world-use-cases)
   * [🎬 How It Works in 3 Steps](#-how-it-works-in-3-steps)
   * [✨ Feature Highlights at a Glance](#-feature-highlights-at-a-glance)
@@ -32,8 +36,8 @@
   * [🚀 Download & Installation](#-download--installation)
 * **Part 2 — Technical Architecture & Engine Reference**
   * [1. Zero Video Loss Passthrough Engine (`-c:v copy`)](#1-zero-video-loss-passthrough-engine--cv-copy)
-  * [2. Dual-Pass EBU R128 Loudness Normalization (`loudnorm`)](#2-dual-pass-ebu-r128-loudness-normalization-loudnorm)
-  * [3. Scene-Aware Dynamic Audio Leveling (`dynaudnorm`)](#3-scene-aware-dynamic-audio-leveling-dynaudnorm)
+  * [2. Dual-Pass EBU R128 Loudness Normalization & Statistical Analysis (`loudnorm`)](#2-dual-pass-ebu-r128-loudness-normalization--statistical-analysis-loudnorm)
+  * [3. Scene-Aware Dynamic Audio Leveling & Acoustic Modeling (`dynaudnorm`)](#3-scene-aware-dynamic-audio-leveling--acoustic-modeling-dynaudnorm)
   * [4. Modern Android Background Resilience & Power Policy](#4-modern-android-background-resilience--power-policy)
   * [5. Batch Pipeline, Graceful Pause & Immediate Process Kill](#5-batch-pipeline-graceful-pause--immediate-process-kill)
   * [6. Scoped Storage Intake & Safe Replacement Strategy](#6-scoped-storage-intake--safe-replacement-strategy)
@@ -57,6 +61,25 @@ Have you ever queued up home videos, downloaded social clips, recorded tutorials
 3. **Intelligent Scene-by-Scene Normalization**: Toggle on dynamic scene leveling to smooth out abrupt volume jumps between scenes while keeping natural cinematic contrast.
 4. **Embedded Terminal Console**: Monitor telemetry live right on the main screen—integrated loudness, true peak, loudness range (LRA), frame count, processing speed multiplier, and ETA—with zero intrusive pop-ups.
 5. **Rock-Solid Background Resilience**: Normalized hundreds of videos in the background while your phone is locked or while you switch between apps.
+
+---
+
+## 🔬 Statistical Signal Analysis & Dynamic Acoustic Modeling
+
+At the core of Deciflux is an advanced audio digital signal processing (DSP) pipeline combining mathematical statistical analysis, psychoacoustic modeling, and dynamic time-domain windowing:
+
+1. **ITU-R BS.1770-4 Statistical Loudness Gating ($I$)**:
+   - **K-Weighting Psychoacoustic Pre-Filter**: Matches human perceived auditory loudness curves through a two-stage filter: a high-shelving pre-filter (simulating human acoustic head diffraction / head-related transfer function) followed by a 2nd-order high-pass RLB weighting filter (attenuating low-frequency acoustic rumble below $100\text{ Hz}$).
+   - **Dual-Stage Statistical Gating**: Evaluates energy blocks in sliding $400\text{ ms}$ windows with $75\%$ overlap. Blocks below an absolute threshold ($\Gamma_a = -70\text{ LKFS}$) are eliminated to discard background silence. An un-gated loudness baseline is computed, and a relative gating threshold ($\Gamma_r = I_{\text{ungated}} - 10\text{ LU}$) statistically filters out low-energy interludes, room noise, and pauses. Only perceptually significant passages contribute to the final Integrated Loudness ($I$).
+   - **Loudness Range Statistical Dispersion ($LRA$)**: Computes the difference between the $95\text{th}$ and $10\text{th}$ percentiles of the gated loudness distribution to characterize program dynamic range without bias from extreme outliers.
+
+2. **Dynamic Sliding Gaussian Window Analysis (`dynaudnorm`)**:
+   - **Continuous Acoustic Envelope Estimation**: Rather than applying static broadband compression or crude peak clipping, Deciflux analyzes local root-mean-square (RMS) power distributions continuously over sliding temporal windows ($f = 800\text{ ms} - 2000\text{ ms}$).
+   - **Gaussian Temporal Weighting**: Smooths the discrete gain factor trajectory across adjacent frames using a symmetric Gaussian kernel ($g = 21 - 45$). This acoustic windowing models natural dynamic envelope decay, preventing auditory pumping, breathing noise, and harmonic distortion across dramatic volume shifts (such as dialogue whispering transitioning into explosions).
+
+3. **Dynamic True-Peak Prediction & Linear Headroom Compression ($TP$)**:
+   - **Sinc-Interpolated Inter-Sample Peak Prediction**: Standard digital sample-peak detectors fail to register inter-sample peaks created during digital-to-analog converter (DAC) reconstruction filtering. Deciflux uses $4\times$ oversampled sinc interpolation to accurately predict continuous-time analog peaks.
+   - **Non-Destructive Linear Gain Calibration**: In Pass 2, Deciflux measures the exact gain delta ($\Delta G = I_{\text{target}} - I_{\text{measured}}$) and checks available headroom against the True-Peak ceiling (e.g. $-1.0\text{ dBTP}$). If the linear gain offset fits within the peak ceiling without clipping, Deciflux engages strict linear amplification (`linear=true`), guaranteeing zero phase distortion, zero compression coloration, and bit-exact preservation of original micro-dynamics.
 
 ---
 
@@ -144,17 +167,30 @@ ffmpeg -y -hide_banner \
 
 ---
 
-## 2. Dual-Pass EBU R128 Loudness Normalization (`loudnorm`)
+## 2. Dual-Pass EBU R128 Loudness Normalization & Statistical Analysis (`loudnorm`)
 
-Deciflux follows ITU-R BS.1770 / EBU R128 international loudness metering:
+Deciflux follows ITU-R BS.1770-4 / EBU R128 international loudness metering, using a rigorous dual-pass statistical signal analysis architecture:
 
-### Pass 1: Analysis
+### Algorithmic Foundations: Dual-Stage Gated Energy Integration
+Integrated Loudness ($I$) is mathematically computed over the gated subset of temporal audio blocks:
+$$L = -0.691 + 10 \log_{10} \left( \sum_{i} w_i \cdot \frac{1}{|J_g|} \sum_{j \in J_g} z_{i,j} \right) \quad [\text{LUFS}]$$
+where:
+- $z_i[n] = (h_{\text{RLB}} * h_{\text{shelf}} * x_i)[n]$ is channel $i$ filtered through the K-weighting psychoacoustic curve (high-shelving acoustic head simulator + high-pass RLB curve).
+- $z_{i,j}$ is the mean square energy across overlapping $400\text{ ms}$ evaluation windows with a $75\%$ hop stride.
+- $J_g = \{ j : L_j > \Gamma_a \land L_j > \Gamma_r \}$ is the statistically gated index set, evaluated against the absolute silence floor ($\Gamma_a = -70\text{ LKFS}$) and the relative dialog floor ($\Gamma_r = I_{\text{ungated}} - 10\text{ LU}$).
+
+### Dynamic True-Peak Prediction ($TP$)
+To detect inter-sample analog reconstruction overshoots that evade traditional discrete sample meters, Deciflux computes True Peak ($TP$) using $4\times$ oversampled sinc interpolation:
+$$x(t) = \sum_{n=-\infty}^{\infty} x[n] \cdot \text{sinc}\left(\frac{t - n T_s}{T_s}\right)$$
+This prevents clipped waveforms and harmonic distortion across DAC low-pass reconstruction filters on mobile speakers and external DACs.
+
+### Pass 1: Telemetry & Statistical Analysis
 ```bash
 ffmpeg -hide_banner -nostats -i input.mp4 \
   -af loudnorm=I=-14.0:TP=-1.0:LRA=11.0:print_format=json \
   -vn -sn -dn -f null -
 ```
-Pass 1 reads only the audio stream (`-vn -sn -dn`), evaluates integrated loudness ($I$), true peak ($TP$), loudness range ($LRA$), and dynamic threshold, outputting structured JSON telemetry:
+Pass 1 analyzes only the audio bitstream (`-vn -sn -dn`), evaluating the distribution across the entire file and emitting structured JSON telemetry:
 ```json
 {
   "input_i": "-34.02",
@@ -165,20 +201,25 @@ Pass 1 reads only the audio stream (`-vn -sn -dn`), evaluates integrated loudnes
 }
 ```
 
-### Pass 2: Linear Normalization
+### Pass 2: Calibrated Linear Normalization
 Pass 2 applies the exact measured parameters to prevent dynamic compression artifacts:
 ```bash
 -af loudnorm=I=-14.0:TP=-1.0:LRA=11.0:measured_I=-34.02:measured_TP=-8.91:measured_LRA=22.90:measured_thresh=-44.15:offset=0.02:linear=true
 ```
-Setting `linear=true` ensures that if the required gain offset does not cause true-peak clipping, the normalization acts as pure linear gain adjustment without altering original audio dynamics.
+Setting `linear=true` ensures that when the calculated gain offset $\Delta G$ fits within the specified True Peak headroom ceiling ($-1.0\text{ dBTP}$), Deciflux performs pure non-destructive linear scaling without altering intra-phrase micro-dynamics.
 
 ---
 
-## 3. Scene-Aware Dynamic Audio Leveling (`dynaudnorm`)
+## 3. Scene-Aware Dynamic Audio Leveling & Acoustic Modeling (`dynaudnorm`)
 
 When the user activates **Scene-by-Scene Normalization**, Deciflux prepends the Dynamic Audio Normalizer (`dynaudnorm`) filter ahead of `loudnorm`:
 
 $$\text{FilterChain} = \text{dynaudnorm}(f=\text{frameLen}, g=\text{gaussSize}, m=\text{maxGain}, p=0.95, r=0.6) \longrightarrow \text{loudnorm}(\text{linear}=\text{true})$$
+
+### Dynamic Sliding Gaussian Window Acoustic Modeling
+`dynaudnorm` performs local dynamic envelope leveling by evaluating the instantaneous RMS energy $P_{\text{RMS}}[m]$ across sliding temporal frames of length $f$ ($800\text{ ms} - 2000\text{ ms}$). To prevent abrupt gain modulation and audible breathing, the raw frame gain multipliers are smoothed across neighboring frames using a discrete symmetric Gaussian kernel:
+$$w(k) = \exp \left( -\frac{1}{2} \left( \frac{k - \frac{N-1}{2}}{\sigma \frac{N-1}{2}} \right)^2 \right), \quad 0 \le k < N$$
+where $N = g$ is the Gaussian kernel size ($21 - 45$ frames) and $\sigma$ controls kernel dispersion.
 
 | Intensity Level | Window Length ($f$) | Gaussian Size ($g$) | Max Gain ($m$) | Profile Description |
 | :--- | :---: | :---: | :---: | :--- |
@@ -187,7 +228,7 @@ $$\text{FilterChain} = \text{dynaudnorm}(f=\text{frameLen}, g=\text{gaussSize}, 
 | **Consistent** | `800 ms` | `21` | `+14 dB` | Brings quiet whispers up close to loud scenes; ideal for phone speakers |
 | **Custom...** | User-defined | Configurable | `+6` to `+18 dB` | Granular slider control over leveling strength (10% – 100%) |
 
-The Gaussian smoothing window ensures that gain changes transition seamlessly between scenes without noticeable pumping or breathing artifacts.
+The continuous Gaussian envelope ensures that transitions between whispered dialogue, quiet outdoor ambience, and loud cinematic action sequences are leveled naturally without audible pumping or harmonic distortion.
 
 ---
 
