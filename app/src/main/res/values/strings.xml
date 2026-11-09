@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Deciflux</string>
+    <string name="notification_channel_name">Batch Video Normalization</string>
+    <string name="notification_channel_desc">Shows ongoing audio normalization progress for video batches</string>
 </resources>

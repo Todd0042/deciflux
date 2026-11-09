@@ -3,6 +3,7 @@ package com.example.deciflux.ui.main
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import com.example.deciflux.ui.theme.DecifluxTheme
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -14,13 +15,18 @@ class MainScreenTest {
 
   @Before
   fun setup() {
-    composeTestRule.setContent { MainScreen(FAKE_DATA) }
+    composeTestRule.setContent {
+      DecifluxTheme {
+        MainScreen()
+      }
+    }
   }
 
   @Test
-  fun firstItem_exists() {
-    FAKE_DATA.forEach { composeTestRule.onNodeWithText("Hello $it!").assertExists() }
+  fun appTitle_andIntakeButtons_exist() {
+    composeTestRule.onNodeWithText("Deciflux").assertExists()
+    composeTestRule.onNodeWithText("Single").assertExists()
+    composeTestRule.onNodeWithText("Files").assertExists()
+    composeTestRule.onNodeWithText("Folder").assertExists()
   }
 }
-
-private val FAKE_DATA = listOf("Sample1", "Sample2", "Sample3")

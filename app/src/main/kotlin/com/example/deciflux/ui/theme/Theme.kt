@@ -17,6 +17,7 @@
 package com.example.deciflux.ui.theme
 
 import android.os.Build
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -27,10 +28,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = primaryDark,
-    primaryContainer = primaryContainerDark,
-    secondary = secondaryDark,
-    tertiary = tertiaryDark
+    primary = DecifluxElectricCyan,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF1B3854),
+    onPrimaryContainer = Color(0xFFD0ECFF),
+    secondary = DecifluxLuminousViolet,
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF35244E),
+    onSecondaryContainer = Color(0xFFEADBFF),
+    tertiary = DecifluxEmeraldPeak,
+    onTertiary = Color.Black,
+    background = DecifluxSurfaceDark,
+    onBackground = Color(0xFFE2E8F0),
+    surface = DecifluxSurfaceDark,
+    onSurface = Color(0xFFE2E8F0),
+    surfaceVariant = DecifluxSurfaceVariantDark,
+    onSurfaceVariant = Color(0xFF94A3B8),
+    outline = DecifluxCardBorder
 )
 
 private val LightColorScheme = lightColorScheme(
