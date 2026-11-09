@@ -6,16 +6,18 @@
 
 ---
 
-# 🔊 Deciflux — Batch Video Audio Normalizer for Android
+# 🔊 Deciflux — Android Video Audio Normalizer (Jetpack Compose Mobile Touch GUI)
 
 [![Version](https://img.shields.io/badge/Version-1.0.0-7CD4FD.svg)](https://github.com/Todd0042/deciflux/releases)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-6EE7B7.svg)](LICENSE)
 [![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-D0BCFF.svg)](https://github.com/Todd0042/deciflux/releases)
+[![Packaging: Standalone APK](https://img.shields.io/badge/Packaging-Standalone%20APK-A7F3D0.svg)](https://github.com/Todd0042/deciflux/releases)
+[![UI: Jetpack Compose Material 3](https://img.shields.io/badge/UI-Jetpack%20Compose%20Material%203-F472B6.svg)]()
 [![Architecture: arm64--v8a | armeabi--v7a | x86 | x86__64](https://img.shields.io/badge/ABI-Universal%20Native%20FFmpeg-38BDF8.svg)]()
 [![Engine: EBU R128 + dynaudnorm](https://img.shields.io/badge/DSP-EBU%20R128%20%7C%20dynaudnorm-34D399.svg)]()
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Creator-F16061?style=flat&logo=ko-fi&logoColor=white)](https://ko-fi.com/todd0042)
 
-> **High-speed, professional-grade batch video audio normalization for Android. Re-encodes audio tracks to broadcast loudness standards (EBU R128 / ITU-R BS.1770) or scene-by-scene dynamic leveling with zero video re-encoding (`-c:v copy`), running up to 30x realtime directly on device with 100% offline privacy.**
+> **Deciflux is a modern native Android touch GUI app built with Jetpack Compose and Material 3 for high-speed, professional batch video audio normalization. Re-encodes audio tracks to broadcast loudness standards (EBU R128 / ITU-R BS.1770) or scene-by-scene dynamic leveling with zero video re-encoding (`-c:v copy`), running up to 30x realtime directly on your device with 100% offline privacy.**
 
 ---
 
@@ -109,7 +111,7 @@ Deciflux is built with Jetpack Compose Material 3 following a sleek dark obsidia
 
 Download the latest pre-compiled signed APK directly from the [Deciflux GitHub Releases](https://github.com/Todd0042/deciflux/releases):
 
-1. Download **`Deciflux-v1.0.7.apk`** to your Android device.
+1. Download **`Deciflux-v1.0.0.apk`** to your Android device.
 2. Open the downloaded file and confirm installation when prompted by Android Package Installer.
 3. Launch **Deciflux** and complete the quick 4-step setup walkthrough.
 

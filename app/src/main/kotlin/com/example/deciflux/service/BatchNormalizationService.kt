@@ -159,54 +159,65 @@ class BatchNormalizationService : Service() {
     private suspend fun processQueue() {
         val config = BatchQueueRepository.config.value
         val items = BatchQueueRepository.queue.value
-
         var processedCount = items.count { it.status == BatchItemStatus.COMPLETED }
         val totalCount = items.size
 
         for (item in items) {
-            if (isBatchCancelled || !serviceScope.isActive) break
-
-            // Handle pause state
-            while (BatchQueueRepository.isPaused.value && !isBatchCancelled && serviceScope.isActive) {
-                delay(500)
-            }
-            if (isBatchCancelled) break
+            if (!awaitPauseState()) break
             if (item.status != BatchItemStatus.QUEUED) continue
 
             val itemIndex = items.indexOfFirst { it.id == item.id } + 1
-            prepareItemForProcessing(item, itemIndex, totalCount)
-
-            if (!checkStorageSafeguard(item, itemIndex, totalCount)) {
-                continue
-            }
-
-            val tempOutputFile = File(cacheDir, "deciflux_tmp_${System.currentTimeMillis()}.mp4")
-            val result = executeItemNormalization(item, config, tempOutputFile, itemIndex, totalCount, processedCount)
-
-            if (isBatchCancelled || !serviceScope.isActive) {
-                tempOutputFile.delete()
-                break
-            }
-
-            if (result.isSuccess) {
+            if (processSingleQueueItem(item, config, itemIndex, totalCount, processedCount)) {
                 processedCount++
-                handleItemSuccess(item, result.getOrNull(), tempOutputFile, config, itemIndex, totalCount)
-            } else {
-                handleItemFailure(item, result, tempOutputFile, itemIndex, totalCount)
             }
+            if (isBatchCancelled || !serviceScope.isActive) break
 
-            // If user requested pause after current video, enter paused state now
-            if (BatchQueueRepository.pauseAfterCurrent.value && !isBatchCancelled) {
+            if (BatchQueueRepository.pauseAfterCurrent.value) {
                 BatchQueueRepository.setPauseAfterCurrent(false)
                 pauseBatchProcessing()
             }
         }
 
-        if (isBatchCancelled) {
-            return
+        if (!isBatchCancelled) {
+            finishBatch(totalCount)
+        }
+    }
+
+    private suspend fun awaitPauseState(): Boolean {
+        while (BatchQueueRepository.isPaused.value && !isBatchCancelled && serviceScope.isActive) {
+            delay(500)
+        }
+        return !isBatchCancelled && serviceScope.isActive
+    }
+
+    private suspend fun processSingleQueueItem(
+        item: VideoBatchItem,
+        config: NormalizationConfig,
+        itemIndex: Int,
+        totalCount: Int,
+        processedCount: Int
+    ): Boolean {
+        prepareItemForProcessing(item, itemIndex, totalCount)
+        if (!checkStorageSafeguard(item, itemIndex, totalCount)) return false
+
+        val tempOutputFile = File(cacheDir, "deciflux_tmp_${System.currentTimeMillis()}.mp4")
+        val result = executeItemNormalization(item, config, tempOutputFile, itemIndex, totalCount, processedCount)
+
+        if (isBatchCancelled || !serviceScope.isActive) {
+            tempOutputFile.delete()
+            return false
         }
 
-        // Batch finished
+        return if (result.isSuccess) {
+            handleItemSuccess(item, result.getOrNull(), tempOutputFile, config, itemIndex, totalCount)
+            true
+        } else {
+            handleItemFailure(item, result, tempOutputFile, itemIndex, totalCount)
+            false
+        }
+    }
+
+    private fun finishBatch(totalCount: Int) {
         BatchQueueRepository.setProcessingState(processing = false, paused = false)
         BatchQueueRepository.setCurrentItem(null)
         BatchQueueRepository.setSpeedAndEta("--", "--:--")
@@ -215,16 +226,10 @@ class BatchNormalizationService : Service() {
         val failedCount = BatchQueueRepository.queue.value.count { it.status == BatchItemStatus.FAILED }
 
         BatchQueueRepository.addLog(
-            TerminalLogEntry(
-                tag = LogTag.SUCCESS,
-                message = "=================================================="
-            )
+            TerminalLogEntry(tag = LogTag.SUCCESS, message = "==================================================")
         )
         BatchQueueRepository.addLog(
-            TerminalLogEntry(
-                tag = LogTag.SUCCESS,
-                message = "Batch Finished: $completedCount completed, $failedCount failed out of $totalCount total."
-            )
+            TerminalLogEntry(tag = LogTag.SUCCESS, message = "Batch Finished: $completedCount completed, $failedCount failed out of $totalCount total.")
         )
 
         updateNotification(

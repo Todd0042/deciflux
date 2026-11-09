@@ -78,6 +78,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.deciflux.model.BatchItemStatus
+import com.example.deciflux.model.NormalizationConfig
+import com.example.deciflux.model.VideoBatchItem
 import com.example.deciflux.ui.components.BatteryOptimizationDialog
 import com.example.deciflux.ui.components.PermissionRationaleDialog
 import com.example.deciflux.ui.components.PresetAndSceneSheet
@@ -191,103 +193,14 @@ fun MainScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = DecifluxSurfaceDark,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(DecifluxSurfaceVariantDark),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.GraphicEq,
-                                contentDescription = null,
-                                tint = DecifluxElectricCyan,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Deciflux",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            val completedCount = queue.count { it.status == BatchItemStatus.COMPLETED }
-                            val subtitleText = if (queue.isNotEmpty()) {
-                                "$completedCount/${queue.size} Processed"
-                            } else {
-                                "Batch Audio Normalizer"
-                            }
-                            Text(
-                                text = subtitleText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isProcessing) DecifluxEmeraldPeak else Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // Overall Progress Ring (When batch is running)
-                    if (isProcessing) {
-                        CircularProgressIndicator(
-                            progress = { overallProgress },
-                            modifier = Modifier
-                                .size(28.dp)
-                                .padding(end = 6.dp),
-                            color = DecifluxEmeraldPeak,
-                            trackColor = Color(0xFF1E293B),
-                            strokeWidth = 3.dp
-                        )
-                    }
-
-                    // Setup / Permissions Walkthrough
-                    IconButton(onClick = onOpenSetup) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = "Permissions & Setup",
-                            tint = DecifluxElectricCyan,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Battery Optimization Exemption
-                    IconButton(onClick = { showBatteryDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.BatteryAlert,
-                            contentDescription = "Battery Optimization",
-                            tint = DecifluxWarningAmber,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Clear Queue / Completed
-                    if (queue.isNotEmpty() && !isProcessing) {
-                        IconButton(onClick = { viewModel.clearQueue() }) {
-                            Icon(
-                                imageVector = Icons.Default.ClearAll,
-                                contentDescription = "Clear Queue",
-                                tint = Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-
-                    // Settings & Presets
-                    IconButton(onClick = { showPresetSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Preset Settings",
-                            tint = DecifluxElectricCyan
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DecifluxSurfaceDark,
-                    titleContentColor = Color.White
-                )
+            MainTopAppBar(
+                queue = queue,
+                isProcessing = isProcessing,
+                overallProgress = overallProgress,
+                onOpenSetup = onOpenSetup,
+                onOpenBatteryDialog = { showBatteryDialog = true },
+                onClearQueue = { viewModel.clearQueue() },
+                onOpenPresetSheet = { showPresetSheet = true }
             )
         }
     ) { innerPadding ->
@@ -297,182 +210,42 @@ fun MainScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 14.dp)
         ) {
-            // 1. INTAKE BUTTONS ROW (Single File, Select Files, Select Folder)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Single Video
-                OutlinedButton(
-                    onClick = {
-                        if (hasPermissions()) singleVideoLauncher.launch("video/*")
-                        else showPermissionDialog = true
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VideoFile,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = DecifluxElectricCyan
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Single", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+            IntakeButtonsRow(
+                isScanningFolder = isScanningFolder,
+                onSingleClick = {
+                    if (hasPermissions()) singleVideoLauncher.launch("video/*")
+                    else showPermissionDialog = true
+                },
+                onFilesClick = {
+                    if (hasPermissions()) multiVideoLauncher.launch("video/*")
+                    else showPermissionDialog = true
+                },
+                onFolderClick = {
+                    if (hasPermissions()) folderLauncher.launch(null)
+                    else showPermissionDialog = true
                 }
+            )
 
-                // Select Files
-                OutlinedButton(
-                    onClick = {
-                        if (hasPermissions()) multiVideoLauncher.launch("video/*")
-                        else showPermissionDialog = true
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VideoLibrary,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = DecifluxElectricCyan
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Files", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
-                }
-
-                // Select Folder
-                OutlinedButton(
-                    onClick = {
-                        if (hasPermissions()) folderLauncher.launch(null)
-                        else showPermissionDialog = true
-                    },
-                    modifier = Modifier.weight(1.1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FolderOpen,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = DecifluxLuminousViolet
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Folder", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            // Folder scan loader indicator
-            if (isScanningFolder) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = DecifluxLuminousViolet
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Scanning folder for video tracks...", fontSize = 12.sp, color = DecifluxLuminousViolet)
-                }
-            }
-
-            // 2. QUEUE LIST (Top/Center portion)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                if (queue.isEmpty()) {
-                    // Sleek Empty State
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(DecifluxCardSurface)
-                                .border(1.dp, DecifluxCardBorder, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Movie,
-                                contentDescription = null,
-                                tint = DecifluxElectricCyan,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Batch Queue is Empty",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Add single videos, select multiple clips, or pick an entire directory to normalize audio volumes.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF94A3B8),
-                            textAlign = TextAlign.Center
-                        )
+            QueueContentBox(
+                queue = queue,
+                isProcessing = isProcessing,
+                onRemove = { viewModel.removeVideo(it) },
+                onPreview = { outUri ->
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(outUri, "video/*")
+                        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp)
-                    ) {
-                        items(queue, key = { it.id }) { item ->
-                            QueueItemCard(
-                                item = item,
-                                isBatchRunning = isProcessing,
-                                onRemove = { viewModel.removeVideo(item.id) },
-                                onPreview = {
-                                    // Play normalized video
-                                    item.outputUri?.let { outUri ->
-                                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(outUri, "video/*")
-                                            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        }
-                                        try {
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {
-                                            Toast.makeText(context, "No video player found", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            )
-                        }
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "No video player found", Toast.LENGTH_SHORT).show()
                     }
-                }
-            }
+                },
+                modifier = Modifier.weight(1f)
+            )
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // 3. EMBEDDED TERMINAL STATUS CONSOLE (Main Screen Component — No Popups!)
             TerminalConsoleView(
                 logs = terminalLogs,
                 isProcessing = isProcessing,
@@ -482,151 +255,25 @@ fun MainScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // 4. BOTTOM ACTION & CONTROLS DOCKED BAR
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, DecifluxCardBorder, RoundedCornerShape(14.dp)),
-                color = DecifluxCardSurface
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Active Preset Pill (Clicking opens preset & scene sheet)
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DecifluxSurfaceVariantDark)
-                            .clickable { showPresetSheet = true }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = null,
-                            tint = DecifluxElectricCyan,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Column {
-                            Text(
-                                text = "${config.preset.title} (${config.targetLufs.toInt()} LUFS)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val sceneStatus = if (config.sceneLevelingEnabled) {
-                                "Scene Leveling: ${config.sceneLevelingIntensity.label}"
-                            } else {
-                                "Scene Leveling: OFF"
-                            }
-                            Text(
-                                text = sceneStatus,
-                                fontSize = 10.sp,
-                                color = if (config.sceneLevelingEnabled) DecifluxLuminousViolet else Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    // Primary Start / Pause / Resume Action Button
-                    if (!isProcessing) {
-                        Button(
-                            onClick = {
-                                if (queue.isEmpty()) {
-                                    Toast.makeText(context, "Add videos to normalize first", Toast.LENGTH_SHORT).show()
-                                } else if (!hasPermissions()) {
-                                    showPermissionDialog = true
-                                } else {
-                                    viewModel.startBatch(context)
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DecifluxElectricCyan,
-                                contentColor = Color.Black
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Start", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    } else if (isPaused) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            // Resume button
-                            Button(
-                                onClick = { viewModel.resumeBatch(context) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = DecifluxEmeraldPeak,
-                                    contentColor = Color.Black
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-
-                            // Stop button
-                            Button(
-                                onClick = { viewModel.cancelBatch(context) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = DecifluxErrorRed,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
-                            }
-                        }
+            BatchDockedControls(
+                config = config,
+                isProcessing = isProcessing,
+                isPaused = isPaused,
+                pauseAfterCurrent = pauseAfterCurrent,
+                onOpenPresetSheet = { showPresetSheet = true },
+                onStart = {
+                    if (queue.isEmpty()) {
+                        Toast.makeText(context, "Add videos to normalize first", Toast.LENGTH_SHORT).show()
+                    } else if (!hasPermissions()) {
+                        showPermissionDialog = true
                     } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            // Pause after current video finishes button (matching the stop button style)
-                            Button(
-                                onClick = { viewModel.togglePauseAfterCurrent(context) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (pauseAfterCurrent) DecifluxWarningAmber else Color(0xFF262D3D),
-                                    contentColor = if (pauseAfterCurrent) Color.Black else Color.White
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (pauseAfterCurrent) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = if (pauseAfterCurrent) "Cancel scheduled pause" else "Pause after current video",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-
-                            // Stop button
-                            Button(
-                                onClick = { viewModel.cancelBatch(context) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = DecifluxErrorRed,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop immediately", modifier = Modifier.size(16.dp))
-                            }
-                        }
+                        viewModel.startBatch(context)
                     }
-                }
-            }
+                },
+                onResume = { viewModel.resumeBatch(context) },
+                onTogglePause = { viewModel.togglePauseAfterCurrent(context) },
+                onCancel = { viewModel.cancelBatch(context) }
+            )
         }
     }
 
@@ -657,3 +304,420 @@ fun MainScreen(
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainTopAppBar(
+    queue: List<VideoBatchItem>,
+    isProcessing: Boolean,
+    overallProgress: Float,
+    onOpenSetup: () -> Unit,
+    onOpenBatteryDialog: () -> Unit,
+    onClearQueue: () -> Unit,
+    onOpenPresetSheet: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        modifier = modifier,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(DecifluxSurfaceVariantDark),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = null,
+                        tint = DecifluxElectricCyan,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Deciflux",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    val completedCount = queue.count { it.status == BatchItemStatus.COMPLETED }
+                    val subtitleText = if (queue.isNotEmpty()) {
+                        "$completedCount/${queue.size} Processed"
+                    } else {
+                        "Batch Audio Normalizer"
+                    }
+                    Text(
+                        text = subtitleText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isProcessing) DecifluxEmeraldPeak else Color(0xFF94A3B8)
+                    )
+                }
+            }
+        },
+        actions = {
+            if (isProcessing) {
+                CircularProgressIndicator(
+                    progress = { overallProgress },
+                    modifier = Modifier
+                        .size(28.dp)
+                        .padding(end = 6.dp),
+                    color = DecifluxEmeraldPeak,
+                    trackColor = Color(0xFF1E293B),
+                    strokeWidth = 3.dp
+                )
+            }
+
+            IconButton(onClick = onOpenSetup) {
+                Icon(
+                    imageVector = Icons.Default.Security,
+                    contentDescription = "Permissions & Setup",
+                    tint = DecifluxElectricCyan,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(onClick = onOpenBatteryDialog) {
+                Icon(
+                    imageVector = Icons.Default.BatteryAlert,
+                    contentDescription = "Battery Optimization",
+                    tint = DecifluxWarningAmber,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            if (queue.isNotEmpty() && !isProcessing) {
+                IconButton(onClick = onClearQueue) {
+                    Icon(
+                        imageVector = Icons.Default.ClearAll,
+                        contentDescription = "Clear Queue",
+                        tint = Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            IconButton(onClick = onOpenPresetSheet) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "Preset Settings",
+                    tint = DecifluxElectricCyan
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = DecifluxSurfaceDark,
+            titleContentColor = Color.White
+        )
+    )
+}
+
+@Composable
+private fun IntakeButtonsRow(
+    isScanningFolder: Boolean,
+    onSingleClick: () -> Unit,
+    onFilesClick: () -> Unit,
+    onFolderClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onSingleClick,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.VideoFile,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = DecifluxElectricCyan
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Single", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+
+            OutlinedButton(
+                onClick = onFilesClick,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.VideoLibrary,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = DecifluxElectricCyan
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Files", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+
+            OutlinedButton(
+                onClick = onFolderClick,
+                modifier = Modifier.weight(1.1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = DecifluxCardSurface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FolderOpen,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = DecifluxLuminousViolet
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Folder", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        if (isScanningFolder) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = DecifluxLuminousViolet
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Scanning folder for video tracks...", fontSize = 12.sp, color = DecifluxLuminousViolet)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueueContentBox(
+    queue: List<VideoBatchItem>,
+    isProcessing: Boolean,
+    onRemove: (String) -> Unit,
+    onPreview: (Uri) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        if (queue.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(DecifluxCardSurface)
+                        .border(1.dp, DecifluxCardBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Movie,
+                        contentDescription = null,
+                        tint = DecifluxElectricCyan,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Batch Queue is Empty",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Add single videos, select multiple clips, or pick an entire directory to normalize audio volumes.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8),
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(queue, key = { it.id }) { item ->
+                    QueueItemCard(
+                        item = item,
+                        isBatchRunning = isProcessing,
+                        onRemove = { onRemove(item.id) },
+                        onPreview = { item.outputUri?.let(onPreview) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BatchDockedControls(
+    config: NormalizationConfig,
+    isProcessing: Boolean,
+    isPaused: Boolean,
+    pauseAfterCurrent: Boolean,
+    onOpenPresetSheet: () -> Unit,
+    onStart: () -> Unit,
+    onResume: () -> Unit,
+    onTogglePause: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, DecifluxCardBorder, RoundedCornerShape(14.dp)),
+        color = DecifluxCardSurface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Active Preset Pill
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(DecifluxSurfaceVariantDark)
+                    .clickable(onClick = onOpenPresetSheet)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = null,
+                    tint = DecifluxElectricCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Column {
+                    Text(
+                        text = "${config.preset.title} (${config.targetLufs.toInt()} LUFS)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    val sceneStatus = if (config.sceneLevelingEnabled) {
+                        "Scene Leveling: ${config.sceneLevelingIntensity.label}"
+                    } else {
+                        "Scene Leveling: OFF"
+                    }
+                    Text(
+                        text = sceneStatus,
+                        fontSize = 10.sp,
+                        color = if (config.sceneLevelingEnabled) DecifluxLuminousViolet else Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            if (!isProcessing) {
+                Button(
+                    onClick = onStart,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DecifluxElectricCyan,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Start", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            } else if (isPaused) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(
+                        onClick = onResume,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DecifluxEmeraldPeak,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+
+                    Button(
+                        onClick = onCancel,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DecifluxErrorRed,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                    }
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(
+                        onClick = onTogglePause,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (pauseAfterCurrent) DecifluxWarningAmber else Color(0xFF262D3D),
+                            contentColor = if (pauseAfterCurrent) Color.Black else Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (pauseAfterCurrent) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = if (pauseAfterCurrent) "Cancel scheduled pause" else "Pause after current video",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = onCancel,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DecifluxErrorRed,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop immediately", modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
