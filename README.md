@@ -8,8 +8,8 @@
 
 # 🔊 Deciflux — Batch Video Audio Normalizer for Android
 
-[![Version](https://img.shields.io/badge/Version-1.0.7-7CD4FD.svg)](https://github.com/Todd0042/deciflux/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-6EE7B7.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-1.0.0-7CD4FD.svg)](https://github.com/Todd0042/deciflux/releases)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-6EE7B7.svg)](LICENSE)
 [![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-D0BCFF.svg)](https://github.com/Todd0042/deciflux/releases)
 [![Architecture: arm64--v8a | armeabi--v7a | x86 | x86__64](https://img.shields.io/badge/ABI-Universal%20Native%20FFmpeg-38BDF8.svg)]()
 [![Engine: EBU R128 + dynaudnorm](https://img.shields.io/badge/DSP-EBU%20R128%20%7C%20dynaudnorm-34D399.svg)]()
@@ -347,6 +347,8 @@ cd deciflux
 
 ## 📄 License & Attribution
 
-Distributed under the **MIT License**.
+Distributed under the **PolyForm Noncommercial License 1.0.0**.
+
+Free for personal, creator, educational, and hobbyist use. Commercial distribution or integration requires a separate commercial license from the author.
 
 Deciflux bundles FFmpeg built under LGPL/GPL licensing terms via `youtubedl-android`. All native binary extraction and execution is performed locally on device in accordance with open-source licensing.
