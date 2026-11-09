@@ -45,17 +45,20 @@ class FFmpegAudioNormalizer(private val context: Context) {
         onLog: (TerminalLogEntry) -> Unit,
         onProgress: (passNumber: Int, progress: Float, speed: String, eta: String) -> Unit
     ): Result<LoudnormAnalysis> = withContext(Dispatchers.IO) {
-        var pfd: ParcelFileDescriptor? = null
+        var cachedInputFile: File? = null
         try {
-            val (fd, inputPath) = MediaUriHelper.openReadableFd(context, inputUri)
-            pfd = fd
-            if (inputPath.isEmpty()) {
-                val errorMsg = "Unable to open input file descriptor for $inputUri"
+            onLog(TerminalLogEntry(tag = LogTag.INFO, message = "Preparing input stream from URI..."))
+            cachedInputFile = MediaUriHelper.prepareInputFile(context, inputUri)
+            if (cachedInputFile == null || !cachedInputFile.exists() || cachedInputFile.length() <= 0L) {
+                val errorMsg = "Unable to read input media from $inputUri"
                 onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
                 return@withContext Result.failure(IllegalStateException(errorMsg))
             }
 
-            onLog(TerminalLogEntry(tag = LogTag.INFO, message = "Probing input stream: $inputPath"))
+            val inputPath = cachedInputFile.absolutePath
+            val inputSizeMb = cachedInputFile.length() / (1024.0 * 1024.0)
+            onLog(TerminalLogEntry(tag = LogTag.INFO, message = String.format("Input stream ready: %.2f MB", inputSizeMb)))
+
             if (!ffmpegBinary.exists() || !ffmpegLibsDir.exists()) {
                 try {
                     com.yausername.ffmpeg.FFmpeg.getInstance().init(context)
@@ -90,11 +93,17 @@ class FFmpegAudioNormalizer(private val context: Context) {
             )
 
             val pass1Output = StringBuilder()
+            val pass1RecentLines = ArrayDeque<String>(30)
+
             val pass1ExitCode = executeCommand(
                 command = pass1Cmd,
                 onLine = { line ->
                     pass1Output.appendLine(line)
-                    if (line.contains("Parsed_loudnorm") || line.contains("loudness")) {
+                    synchronized(pass1RecentLines) {
+                        if (pass1RecentLines.size >= 25) pass1RecentLines.removeFirst()
+                        pass1RecentLines.addLast(line)
+                    }
+                    if (line.contains("Parsed_loudnorm") || line.contains("loudness") || line.contains("error", ignoreCase = true)) {
                         onLog(TerminalLogEntry(tag = LogTag.ANALYSIS, message = line.trim()))
                     }
                 }
@@ -103,6 +112,9 @@ class FFmpegAudioNormalizer(private val context: Context) {
             if (pass1ExitCode != 0) {
                 val errorMsg = "Pass 1 analysis failed with exit code $pass1ExitCode"
                 onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
+                pass1RecentLines.takeLast(10).forEach { errLine ->
+                    onLog(TerminalLogEntry(tag = LogTag.WARN, message = "[FFmpeg] ${errLine.trim()}"))
+                }
                 return@withContext Result.failure(RuntimeException(errorMsg))
             }
 
@@ -110,6 +122,9 @@ class FFmpegAudioNormalizer(private val context: Context) {
             if (analysis == null) {
                 val errorMsg = "Failed to parse Pass 1 loudness measurement JSON"
                 onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
+                pass1RecentLines.takeLast(10).forEach { errLine ->
+                    onLog(TerminalLogEntry(tag = LogTag.WARN, message = "[FFmpeg] ${errLine.trim()}"))
+                }
                 return@withContext Result.failure(IllegalStateException(errorMsg))
             }
 
@@ -158,10 +173,16 @@ class FFmpegAudioNormalizer(private val context: Context) {
 
             val timePattern = Pattern.compile("time=(\\d+):(\\d+):(\\d+\\.\\d+)")
             val speedPattern = Pattern.compile("speed=\\s*([\\d\\.]+)x")
+            val pass2RecentLines = ArrayDeque<String>(30)
 
             val pass2ExitCode = executeCommand(
                 command = pass2Cmd,
                 onLine = { line ->
+                    synchronized(pass2RecentLines) {
+                        if (pass2RecentLines.size >= 25) pass2RecentLines.removeFirst()
+                        pass2RecentLines.addLast(line)
+                    }
+
                     // Parse live progress telemetry from FFmpeg status lines
                     val timeMatcher = timePattern.matcher(line)
                     val speedMatcher = speedPattern.matcher(line)
@@ -195,6 +216,9 @@ class FFmpegAudioNormalizer(private val context: Context) {
             if (pass2ExitCode != 0) {
                 val errorMsg = "Pass 2 remux failed with exit code $pass2ExitCode"
                 onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
+                pass2RecentLines.takeLast(10).forEach { errLine ->
+                    onLog(TerminalLogEntry(tag = LogTag.WARN, message = "[FFmpeg] ${errLine.trim()}"))
+                }
                 return@withContext Result.failure(RuntimeException(errorMsg))
             }
 
@@ -217,7 +241,7 @@ class FFmpegAudioNormalizer(private val context: Context) {
             Result.failure(e)
         } finally {
             try {
-                pfd?.close()
+                cachedInputFile?.delete()
             } catch (_: Exception) {}
         }
     }

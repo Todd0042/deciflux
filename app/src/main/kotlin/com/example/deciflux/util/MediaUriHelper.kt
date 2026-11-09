@@ -59,22 +59,53 @@ object MediaUriHelper {
     }
 
     /**
-     * Resolves an accessible file path for FFmpeg.
-     * Uses /proc/self/fd/[fd] via ParcelFileDescriptor for zero-copy streaming,
-     * or falls back to a cached copy if necessary.
+     * Prepares an accessible input file for FFmpeg.
+     * Copies the content URI stream to a temporary cached file in context.cacheDir
+     * ensuring direct POSIX filesystem access for the external FFmpeg child process.
      */
-    fun openReadableFd(context: Context, uri: Uri): Pair<ParcelFileDescriptor?, String> {
+    fun prepareInputFile(
+        context: Context,
+        uri: Uri,
+        onProgress: ((copiedBytes: Long, totalBytes: Long) -> Unit)? = null
+    ): File? {
         return try {
-            val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-            if (pfd != null) {
-                val path = "/proc/self/fd/${pfd.fd}"
-                Pair(pfd, path)
+            val extension = when {
+                uri.scheme == ContentResolver.SCHEME_FILE -> uri.path?.substringAfterLast('.', "mp4") ?: "mp4"
+                else -> {
+                    val mime = context.contentResolver.getType(uri)
+                    when (mime) {
+                        "video/quicktime" -> "mov"
+                        "video/x-matroska" -> "mkv"
+                        "video/webm" -> "webm"
+                        "video/avi" -> "avi"
+                        else -> "mp4"
+                    }
+                }
+            }
+
+            val tempFile = File(context.cacheDir, "input_stream_${System.currentTimeMillis()}.$extension")
+            context.contentResolver.openInputStream(uri)?.use { inStream ->
+                FileOutputStream(tempFile).use { outStream ->
+                    val buffer = ByteArray(128 * 1024)
+                    var bytesRead: Int
+                    var totalCopied = 0L
+                    while (inStream.read(buffer).also { bytesRead = it } != -1) {
+                        outStream.write(buffer, 0, bytesRead)
+                        totalCopied += bytesRead
+                        onProgress?.invoke(totalCopied, -1L)
+                    }
+                    outStream.flush()
+                }
+            }
+            if (tempFile.exists() && tempFile.length() > 0L) {
+                tempFile
             } else {
-                Pair(null, "")
+                tempFile.delete()
+                null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Could not open ParcelFileDescriptor for $uri", e)
-            Pair(null, "")
+            Log.e(TAG, "Failed to copy input URI to cache file: $uri", e)
+            null
         }
     }
 
