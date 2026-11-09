@@ -86,48 +86,22 @@ fun InitialSetupScreen(
     val context = LocalContext.current
     var currentStep by remember { mutableIntStateOf(0) }
 
-    // Helper permission checker functions
-    fun checkStorageGranted(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    fun checkNotificationGranted(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
-    }
-
-    fun checkBatteryExempt(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-            pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
-        } else {
-            true
-        }
-    }
-
-    var isStorageGranted by remember { mutableStateOf(checkStorageGranted()) }
-    var isNotificationGranted by remember { mutableStateOf(checkNotificationGranted()) }
-    var isBatteryExempt by remember { mutableStateOf(checkBatteryExempt()) }
+    var isStorageGranted by remember { mutableStateOf(com.example.deciflux.util.PermissionChecker.hasStoragePermission(context)) }
+    var isNotificationGranted by remember { mutableStateOf(com.example.deciflux.util.PermissionChecker.hasNotificationPermission(context)) }
+    var isBatteryExempt by remember { mutableStateOf(com.example.deciflux.util.PermissionChecker.isBatteryOptimizationExempt(context)) }
 
     // Storage permission launcher
     val storageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        isStorageGranted = granted || checkStorageGranted()
+        isStorageGranted = granted || com.example.deciflux.util.PermissionChecker.hasStoragePermission(context)
     }
 
     // Notification permission launcher
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        isNotificationGranted = granted || checkNotificationGranted()
+        isNotificationGranted = granted || com.example.deciflux.util.PermissionChecker.hasNotificationPermission(context)
     }
 
     val totalSteps = 4
@@ -288,7 +262,7 @@ fun InitialSetupScreen(
                                 }
                             }
                             // Recheck upon user return
-                            isBatteryExempt = checkBatteryExempt()
+                            isBatteryExempt = com.example.deciflux.util.PermissionChecker.isBatteryOptimizationExempt(context)
                         }
                     )
 

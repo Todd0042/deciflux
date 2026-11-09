@@ -38,9 +38,10 @@
   * [5. Batch Pipeline, Graceful Pause & Immediate Process Kill](#5-batch-pipeline-graceful-pause--immediate-process-kill)
   * [6. Scoped Storage Intake & Safe Replacement Strategy](#6-scoped-storage-intake--safe-replacement-strategy)
   * [7. Pre-Flight Storage Capacity Safeguards](#7-pre-flight-storage-capacity-safeguards)
-  * [8. Universal Native Packaging & Android Linker Configuration](#8-universal-native-packaging--android-linker-configuration)
-  * [9. Codebase Architecture & File Map](#9-codebase-architecture--file-map)
-  * [10. Building from Source](#10-building-from-source)
+  * [8. Defensive Security & Path Sanitization Architecture](#8-defensive-security--path-sanitization-architecture)
+  * [9. Universal Native Packaging & Android Linker Configuration](#9-universal-native-packaging--android-linker-configuration)
+  * [10. Codebase Architecture & File Map](#10-codebase-architecture--file-map)
+  * [11. Building from Source](#11-building-from-source)
 
 ---
 
@@ -258,7 +259,19 @@ To prevent running out of storage mid-batch:
 
 ---
 
-## 8. Universal Native Packaging & Android Linker Configuration
+## 8. Defensive Security & Path Sanitization Architecture
+
+Deciflux implements defensive validation and path traversal mitigations throughout the processing pipeline:
+
+1. **Explicit Permission Boundary Checks**: The `PermissionChecker` utility inspects runtime permissions (`READ_MEDIA_VIDEO` / `READ_EXTERNAL_STORAGE` and `POST_NOTIFICATIONS`) prior to initiating batch execution.
+2. **Path Traversal & Null-Byte Neutralization**: `SecuritySanitizer.sanitizeFilePath` and `SecuritySanitizer.sanitizeFilename` strip escape sequences (`../`, `..\`) and reject null byte (`\u0000`) sequences.
+3. **Canonical Confinement Verification**: Temporary cache files and destination targets are strictly verified to reside within designated app storage directories using `SecuritySanitizer.isPathWithinDirectory`.
+4. **Content Protocol Verification**: `SecuritySanitizer.isSafeContentUri` validates that incoming media URIs strictly conform to trusted Android `content://` and `file://` schemes.
+5. **Process Argument Defense**: All parameters passed to the native FFmpeg subprocess are verified via `SecuritySanitizer.isProcessArgumentSafe` to prevent control character injection.
+
+---
+
+## 9. Universal Native Packaging & Android Linker Configuration
 
 Deciflux bundles native FFmpeg 6.x ELF binaries and shared dynamic libraries across all 4 Android architectures:
 
@@ -279,7 +292,7 @@ app/src/main/jniLibs/
 
 ---
 
-## 9. Codebase Architecture & File Map
+## 10. Codebase Architecture & File Map
 
 ```
 deciflux/
@@ -325,7 +338,7 @@ deciflux/
 
 ---
 
-## 10. Building from Source
+## 11. Building from Source
 
 ### Prerequisites
 - Android Studio Ladybug / Meerkat (or newer)

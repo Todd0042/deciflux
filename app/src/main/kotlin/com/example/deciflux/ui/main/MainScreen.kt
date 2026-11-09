@@ -126,14 +126,7 @@ fun MainScreen(
 
     // Check runtime permissions
     val requiredPermissions = remember {
-        val list = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            list.add(Manifest.permission.READ_MEDIA_VIDEO)
-            list.add(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            list.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        list.toTypedArray()
+        com.example.deciflux.util.PermissionChecker.getRequiredPermissionsList().toTypedArray()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -145,11 +138,7 @@ fun MainScreen(
         }
     }
 
-    fun hasPermissions(): Boolean {
-        return requiredPermissions.all {
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-        }
-    }
+    fun hasPermissions(): Boolean = com.example.deciflux.util.PermissionChecker.hasStoragePermission(context)
 
     // Intake Launchers
     // 1. Single Video Picker
