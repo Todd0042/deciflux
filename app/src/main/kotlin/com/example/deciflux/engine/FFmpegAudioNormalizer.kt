@@ -29,12 +29,14 @@ class FFmpegAudioNormalizer(private val context: Context) {
 
     private val ffmpegBinary: File
     private val ffmpegLibsDir: File
+    private val pythonLibsDir: File
     private val nativeLibDir: File
 
     init {
         nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
         ffmpegBinary = File(nativeLibDir, "libffmpeg.so")
         ffmpegLibsDir = File(context.noBackupFilesDir, "youtubedl-android/packages/ffmpeg/usr/lib")
+        pythonLibsDir = File(context.noBackupFilesDir, "youtubedl-android/packages/python/usr/lib")
     }
 
     suspend fun normalizeVideo(
@@ -59,11 +61,12 @@ class FFmpegAudioNormalizer(private val context: Context) {
             val inputSizeMb = cachedInputFile.length() / (1024.0 * 1024.0)
             onLog(TerminalLogEntry(tag = LogTag.INFO, message = String.format("Input stream ready: %.2f MB", inputSizeMb)))
 
-            if (!ffmpegBinary.exists() || !ffmpegLibsDir.exists()) {
+            if (!ffmpegBinary.exists() || !ffmpegLibsDir.exists() || !pythonLibsDir.exists()) {
                 try {
+                    com.yausername.youtubedl_android.YoutubeDL.getInstance().init(context)
                     com.yausername.ffmpeg.FFmpeg.getInstance().init(context)
                 } catch (t: Throwable) {
-                    Log.w(TAG, "On-demand FFmpeg init encountered: ${t.message}")
+                    Log.w(TAG, "On-demand FFmpeg/packages init encountered: ${t.message}")
                 }
             }
 
@@ -287,6 +290,7 @@ class FFmpegAudioNormalizer(private val context: Context) {
         val env = pb.environment()
         val ldPath = buildString {
             if (ffmpegLibsDir.exists()) append(ffmpegLibsDir.absolutePath).append(":")
+            if (pythonLibsDir.exists()) append(pythonLibsDir.absolutePath).append(":")
             append(nativeLibDir.absolutePath)
         }
         env["LD_LIBRARY_PATH"] = ldPath

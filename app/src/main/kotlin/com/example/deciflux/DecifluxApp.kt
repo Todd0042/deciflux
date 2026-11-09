@@ -22,9 +22,10 @@ class DecifluxApp : Application() {
         // Safe asynchronous initialization so app startup is instant and never crashes
         appScope.launch {
             try {
+                com.yausername.youtubedl_android.YoutubeDL.getInstance().init(this@DecifluxApp)
                 FFmpeg.getInstance().init(this@DecifluxApp)
                 isFfmpegInitialized = true
-                Log.i(TAG, "Deciflux native FFmpeg engine initialized successfully.")
+                Log.i(TAG, "Deciflux native FFmpeg engine & shared packages initialized successfully.")
             } catch (t: Throwable) {
                 isFfmpegInitialized = false
                 Log.e(TAG, "Failed to initialize native FFmpeg engine: ${t.message}", t)
