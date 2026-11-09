@@ -56,8 +56,16 @@ class FFmpegAudioNormalizer(private val context: Context) {
             }
 
             onLog(TerminalLogEntry(tag = LogTag.INFO, message = "Probing input stream: $inputPath"))
+            if (!ffmpegBinary.exists() || !ffmpegLibsDir.exists()) {
+                try {
+                    com.yausername.ffmpeg.FFmpeg.getInstance().init(context)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "On-demand FFmpeg init encountered: ${t.message}")
+                }
+            }
+
             if (!ffmpegBinary.exists()) {
-                val errorMsg = "FFmpeg binary not found at ${ffmpegBinary.absolutePath}"
+                val errorMsg = "FFmpeg binary not found at ${ffmpegBinary.absolutePath}. Please check device ABI."
                 onLog(TerminalLogEntry(tag = LogTag.ERROR, message = errorMsg))
                 return@withContext Result.failure(IllegalStateException(errorMsg))
             }

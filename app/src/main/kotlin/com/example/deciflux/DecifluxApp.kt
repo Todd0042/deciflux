@@ -6,19 +6,29 @@ import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class DecifluxApp : Application() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
-        // Initialize Native FFmpeg Engine
-        try {
-            FFmpeg.getInstance().init(this)
-            Log.i(TAG, "Deciflux native FFmpeg engine initialized successfully.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize native FFmpeg engine", e)
+        // Safe asynchronous initialization so app startup is instant and never crashes
+        appScope.launch {
+            try {
+                FFmpeg.getInstance().init(this@DecifluxApp)
+                isFfmpegInitialized = true
+                Log.i(TAG, "Deciflux native FFmpeg engine initialized successfully.")
+            } catch (t: Throwable) {
+                isFfmpegInitialized = false
+                Log.e(TAG, "Failed to initialize native FFmpeg engine: ${t.message}", t)
+            }
         }
 
         createNotificationChannels()
@@ -44,6 +54,10 @@ class DecifluxApp : Application() {
         private const val TAG = "DecifluxApp"
         const val BATCH_CHANNEL_ID = "deciflux_batch_processing"
         const val BATCH_NOTIFICATION_ID = 2026
+
+        @Volatile
+        var isFfmpegInitialized: Boolean = false
+            private set
 
         lateinit var instance: DecifluxApp
             private set

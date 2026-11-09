@@ -38,6 +38,7 @@ android {
       excludes += "META-INF/DEPENDENCIES"
     }
     jniLibs {
+      useLegacyPackaging = true
       pickFirsts += "lib/**/libc++_shared.so"
     }
   }
@@ -83,7 +84,8 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.ui)
 
-  // FFmpeg native binary engine (EBU R128 Loudness, dynaudnorm, and stream copy)
+  // FFmpeg & native binary engine (EBU R128 Loudness, dynaudnorm, and stream copy)
+  implementation(libs.youtubedl.library)
   implementation(libs.youtubedl.ffmpeg)
 
   // Local tests: jUnit, coroutines, Android runner, Mockito
