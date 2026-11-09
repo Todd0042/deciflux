@@ -23,6 +23,7 @@
 
 * **Part 1 — User Overview & Quick Start**
   * [⚡ What Is Deciflux?](#-what-is-deciflux)
+  * [🎯 Real-World Use Cases](#-real-world-use-cases)
   * [🎬 How It Works in 3 Steps](#-how-it-works-in-3-steps)
   * [✨ Feature Highlights at a Glance](#-feature-highlights-at-a-glance)
   * [📱 Visual Design & Terminal Console](#-visual-design--terminal-console)
@@ -53,6 +54,19 @@ Have you ever queued up home videos, downloaded social clips, recorded tutorials
 3. **Intelligent Scene-by-Scene Normalization**: Toggle on dynamic scene leveling to smooth out abrupt volume jumps between scenes while keeping natural cinematic contrast.
 4. **Embedded Terminal Console**: Monitor telemetry live right on the main screen—integrated loudness, true peak, loudness range (LRA), frame count, processing speed multiplier, and ETA—with zero intrusive pop-ups.
 5. **Rock-Solid Background Resilience**: Normalized hundreds of videos in the background while your phone is locked or while you switch between apps.
+
+---
+
+## 🎯 Real-World Use Cases
+
+| User Persona & Scenario | The Challenge | How Deciflux Solves It | Recommended Preset & Settings |
+| :--- | :--- | :--- | :--- |
+| **📱 Social Media Creators (YouTube, TikTok, Reels, Shorts)** | Mobile vloggers and creators shoot multiple clips across varying environments (windy outdoor streets, quiet rooms, noisy cafes). When combined into a playlist or uploaded, volume varies wildly, causing viewers to manually adjust their volume or scroll away. | Batches dozens of short clips in seconds. Normalizes integrated loudness strictly to the standard **-14 LUFS** platform delivery ceiling with a **-1.0 dBTP** true peak safeguard, ensuring your clips play at maximum commercial volume without being penalized or crushed by platform loudness limiters. | **YouTube & Social** (`-14 LUFS`, `-1.0 dBTP`, `LRA 11.0 LU`)<br>• Codec: `AAC @ 192k`<br>• Scene Leveling: *Optional* |
+| **🎙️ Mobile Podcasters & Video Interviewers** | Multi-speaker interviews or remote video recordings where one speaker sits further from the microphone or speaks much quieter than an assertive host. | The **Scene-Aware Dynamic Leveler (`dynaudnorm`)** analyzes local RMS windows and dynamically elevates quiet speech passages without exaggerating room noise during silent breaks. | **Streaming & Podcasts** or **Dialogue Boost** (`-15` or `-16 LUFS`)<br>• Scene Leveling: **Balanced** (`1200ms` window, `+10 dB` max gain) |
+| **🎬 Cinematic Vloggers & Drone Cinematographers** | 4K 60fps / 10-bit HDR video files captured on DJI drones, GoPros, or mirrorless cameras contain huge video bitrates. Transcoding video on a phone would take hours and wash out color metadata. | **Zero Video Re-encoding (`-c:v copy`)** passes through 4K/HEVC/10-bit video packets untouched with bit-for-bit fidelity, completing a 10-minute clip in ~20 seconds without thermal throttling or color loss. | **YouTube & Social** (`-14 LUFS`)<br>• Scene Leveling: **Subtle** (`2000ms` window, preserving cinematic dynamic contrast) |
+| **📺 Movie & TV Show Enthusiasts (Action vs Dialogue)** | Action movies played over phone speakers or Bluetooth headphones where whispers and dialogue require turning volume up to 100%, followed by deafening explosions or gunshots that hurt your ears. | **Consistent Scene Leveling** acts as an intelligent real-time audio leveling compressor, tightening loudness range ($LRA$) down to comfortable listening margins so you can hear whispers clearly without getting blasted during action scenes. | **Custom Tuner** (`-16 LUFS`)<br>• Scene Leveling: **Consistent** (`800ms` window, `+14 dB` max gain) |
+| **📚 Online Course Instructors & Tutorial Lecturers** | Hours of screen recordings, lectures, and software tutorials recorded over several weeks with slight differences in microphone distance, input gain, or background room acoustics. | Drop entire course directories into Deciflux with the recursive **Folder Scanner**. Queue hundreds of lessons overnight, enabling **Replace Original Files** to clean up the library automatically with zero storage bloat. | **Dialogue Boost** (`-15 LUFS`, `-1.0 dBTP`, `LRA 8.0 LU`)<br>• Replace Original Files: **ON** |
+| **📁 Archival Collectors & Video Library Curators** | Organizing thousands of legacy video clips, concert bootlegs, or home video archives with random volume levels ranging from -38 LUFS to -6 LUFS. | Run massive 500+ video queues in the background. The **Pre-Flight Storage Safeguard** validates free disk capacity before every file, while the **Partial WakeLock** keeps processing running continuously overnight with the phone locked. | Any Preset matching target media library<br>• Graceful pause & resume on demand |
 
 ---
 
