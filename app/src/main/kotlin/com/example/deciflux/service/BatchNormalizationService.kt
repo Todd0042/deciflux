@@ -61,6 +61,8 @@ class BatchNormalizationService : Service() {
             ACTION_START_BATCH -> startBatchProcessing()
             ACTION_PAUSE_BATCH -> pauseBatchProcessing()
             ACTION_RESUME_BATCH -> resumeBatchProcessing()
+            ACTION_SCHEDULE_PAUSE_AFTER_CURRENT -> schedulePauseAfterCurrent()
+            ACTION_CANCEL_SCHEDULED_PAUSE -> cancelScheduledPause()
             ACTION_CANCEL_BATCH -> cancelBatchProcessing()
         }
         return START_NOT_STICKY
@@ -86,6 +88,20 @@ class BatchNormalizationService : Service() {
         }
     }
 
+    private fun schedulePauseAfterCurrent() {
+        BatchQueueRepository.setPauseAfterCurrent(true)
+        BatchQueueRepository.addLog(
+            TerminalLogEntry(tag = LogTag.WARN, message = "Pause scheduled: Batch will pause once the current video finishes.")
+        )
+    }
+
+    private fun cancelScheduledPause() {
+        BatchQueueRepository.setPauseAfterCurrent(false)
+        BatchQueueRepository.addLog(
+            TerminalLogEntry(tag = LogTag.INFO, message = "Scheduled pause cancelled: Batch will continue processing.")
+        )
+    }
+
     private fun pauseBatchProcessing() {
         BatchQueueRepository.setProcessingState(processing = true, paused = true)
         BatchQueueRepository.addLog(
@@ -101,6 +117,7 @@ class BatchNormalizationService : Service() {
 
     private fun resumeBatchProcessing() {
         BatchQueueRepository.setProcessingState(processing = true, paused = false)
+        BatchQueueRepository.setPauseAfterCurrent(false)
         BatchQueueRepository.addLog(
             TerminalLogEntry(tag = LogTag.INFO, message = "Resuming batch queue...")
         )
@@ -268,6 +285,12 @@ class BatchNormalizationService : Service() {
                     )
                 )
             }
+
+            // If user requested pause after current video, enter paused state now
+            if (BatchQueueRepository.pauseAfterCurrent.value && !isBatchCancelled) {
+                BatchQueueRepository.setPauseAfterCurrent(false)
+                pauseBatchProcessing()
+            }
         }
 
         if (isBatchCancelled) {
@@ -424,6 +447,8 @@ class BatchNormalizationService : Service() {
         const val ACTION_START_BATCH = "com.example.deciflux.START_BATCH"
         const val ACTION_PAUSE_BATCH = "com.example.deciflux.PAUSE_BATCH"
         const val ACTION_RESUME_BATCH = "com.example.deciflux.RESUME_BATCH"
+        const val ACTION_SCHEDULE_PAUSE_AFTER_CURRENT = "com.example.deciflux.SCHEDULE_PAUSE_AFTER_CURRENT"
+        const val ACTION_CANCEL_SCHEDULED_PAUSE = "com.example.deciflux.CANCEL_SCHEDULED_PAUSE"
         const val ACTION_CANCEL_BATCH = "com.example.deciflux.CANCEL_BATCH"
     }
 }

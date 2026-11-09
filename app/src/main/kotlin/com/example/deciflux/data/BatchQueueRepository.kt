@@ -28,6 +28,9 @@ object BatchQueueRepository {
     private val _isPaused = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
 
+    private val _pauseAfterCurrent = MutableStateFlow(false)
+    val pauseAfterCurrent: StateFlow<Boolean> = _pauseAfterCurrent.asStateFlow()
+
     private val _currentItemId = MutableStateFlow<String?>(null)
     val currentItemId: StateFlow<String?> = _currentItemId.asStateFlow()
 
@@ -115,6 +118,13 @@ object BatchQueueRepository {
     fun setProcessingState(processing: Boolean, paused: Boolean = false) {
         _isProcessing.value = processing
         _isPaused.value = paused
+        if (!processing) {
+            _pauseAfterCurrent.value = false
+        }
+    }
+
+    fun setPauseAfterCurrent(pause: Boolean) {
+        _pauseAfterCurrent.value = pause
     }
 
     fun setCurrentItem(id: String?) {
@@ -180,6 +190,19 @@ object BatchQueueRepository {
     fun resumeBatch(context: Context) {
         val intent = Intent(context, BatchNormalizationService::class.java).apply {
             action = BatchNormalizationService.ACTION_RESUME_BATCH
+        }
+        context.startService(intent)
+    }
+
+    fun togglePauseAfterCurrent(context: Context) {
+        val willPause = !_pauseAfterCurrent.value
+        _pauseAfterCurrent.value = willPause
+        val intent = Intent(context, BatchNormalizationService::class.java).apply {
+            action = if (willPause) {
+                BatchNormalizationService.ACTION_SCHEDULE_PAUSE_AFTER_CURRENT
+            } else {
+                BatchNormalizationService.ACTION_CANCEL_SCHEDULED_PAUSE
+            }
         }
         context.startService(intent)
     }

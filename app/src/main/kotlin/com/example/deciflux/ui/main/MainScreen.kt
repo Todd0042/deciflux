@@ -108,6 +108,7 @@ fun MainScreen(
     val config by viewModel.config.collectAsStateWithLifecycle()
     val isProcessing by viewModel.isProcessing.collectAsStateWithLifecycle()
     val isPaused by viewModel.isPaused.collectAsStateWithLifecycle()
+    val pauseAfterCurrent by viewModel.pauseAfterCurrent.collectAsStateWithLifecycle()
     val terminalLogs by viewModel.terminalLogs.collectAsStateWithLifecycle()
     val overallProgress by viewModel.overallProgress.collectAsStateWithLifecycle()
     val currentSpeed by viewModel.currentSpeed.collectAsStateWithLifecycle()
@@ -550,37 +551,23 @@ fun MainScreen(
                             Text("Start", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     } else if (isPaused) {
-                        Button(
-                            onClick = { viewModel.resumeBatch(context) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DecifluxEmeraldPeak,
-                                contentColor = Color.Black
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            // Pause button
+                            // Resume button
                             Button(
-                                onClick = { viewModel.pauseBatch(context) },
+                                onClick = { viewModel.resumeBatch(context) },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = DecifluxWarningAmber,
+                                    containerColor = DecifluxEmeraldPeak,
                                     contentColor = Color.Black
                                 ),
                                 shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text("Pause", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
 
-                            // Cancel button
+                            // Stop button
                             Button(
                                 onClick = { viewModel.cancelBatch(context) },
                                 colors = ButtonDefaults.buttonColors(
@@ -590,7 +577,39 @@ fun MainScreen(
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Pause after current video finishes button (matching the stop button style)
+                            Button(
+                                onClick = { viewModel.togglePauseAfterCurrent(context) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (pauseAfterCurrent) DecifluxWarningAmber else Color(0xFF262D3D),
+                                    contentColor = if (pauseAfterCurrent) Color.Black else Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (pauseAfterCurrent) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = if (pauseAfterCurrent) "Cancel scheduled pause" else "Pause after current video",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            // Stop button
+                            Button(
+                                onClick = { viewModel.cancelBatch(context) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DecifluxErrorRed,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop immediately", modifier = Modifier.size(16.dp))
                             }
                         }
                     }

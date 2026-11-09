@@ -19,6 +19,7 @@ class MainScreenViewModel : ViewModel() {
     val config: StateFlow<NormalizationConfig> = BatchQueueRepository.config
     val isProcessing: StateFlow<Boolean> = BatchQueueRepository.isProcessing
     val isPaused: StateFlow<Boolean> = BatchQueueRepository.isPaused
+    val pauseAfterCurrent: StateFlow<Boolean> = BatchQueueRepository.pauseAfterCurrent
     val currentItemId: StateFlow<String?> = BatchQueueRepository.currentItemId
     val terminalLogs: StateFlow<List<TerminalLogEntry>> = BatchQueueRepository.terminalLogs
     val overallProgress: StateFlow<Float> = BatchQueueRepository.overallProgress
@@ -73,6 +74,10 @@ class MainScreenViewModel : ViewModel() {
 
     fun resumeBatch(context: Context) {
         BatchQueueRepository.resumeBatch(context)
+    }
+
+    fun togglePauseAfterCurrent(context: Context) {
+        BatchQueueRepository.togglePauseAfterCurrent(context)
     }
 
     fun cancelBatch(context: Context) {
