@@ -55,9 +55,8 @@ object BatchQueueRepository {
 
     fun addVideos(items: List<VideoBatchItem>) {
         _queue.update { current ->
-            // Prevent duplicate URIs in the queue
             val existingUris = current.map { it.uri }.toSet()
-            val newItems = items.filter { it.uri !in existingUris }
+            val newItems = items.distinctBy { it.uri }.filter { it.uri !in existingUris }
             current + newItems
         }
         addLog(

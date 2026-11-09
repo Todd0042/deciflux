@@ -291,7 +291,9 @@ deciflux/
 │       ├── data/
 │       │   └── BatchQueueRepository.kt            # Singleton StateFlow repository & batch coordinator
 │       ├── engine/
-│       │   └── FFmpegAudioNormalizer.kt           # 2-pass EBU R128 + dynaudnorm FFmpeg engine
+│       │   ├── FFmpegAudioNormalizer.kt           # 2-pass EBU R128 + dynaudnorm orchestrator
+│       │   ├── LoudnormParser.kt                  # Zero-dependency EBU R128 measurement block parser
+│       │   └── TelemetryParser.kt                 # Live transcode speed, ETA, and progress parser
 │       ├── model/
 │       │   ├── NormalizationConfig.kt             # Presets, scene leveling intensities, audio codec options
 │       │   ├── TerminalLogEntry.kt                # LogTag enum and formatted log models
@@ -315,7 +317,8 @@ deciflux/
 │       │       └── Type.kt                        # Typography specifications
 │       └── util/
 │           ├── FolderScanner.kt                   # Recursive DocumentFile SAF folder scanner
-│           └── MediaUriHelper.kt                  # File descriptors, StatFs check, transactional deletion
+│           ├── MediaUriHelper.kt                  # File descriptors, StatFs check, transactional deletion
+│           └── SecuritySanitizer.kt               # Defensive path traversal and shell sanitation
 ```
 
 ---

@@ -3,7 +3,6 @@ package com.example.deciflux.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -21,14 +19,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +45,6 @@ import com.example.deciflux.ui.theme.DecifluxEmeraldPeak
 import com.example.deciflux.ui.theme.DecifluxErrorRed
 import com.example.deciflux.ui.theme.DecifluxLuminousViolet
 import com.example.deciflux.ui.theme.DecifluxSurfaceVariantDark
-import com.example.deciflux.ui.theme.DecifluxWarningAmber
 
 @Composable
 fun QueueItemCard(
@@ -73,61 +68,10 @@ fun QueueItemCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Video Type Icon / Status Indicator Box
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(DecifluxSurfaceVariantDark),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when (item.status) {
-                        BatchItemStatus.COMPLETED -> {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Completed",
-                                tint = DecifluxEmeraldPeak,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        BatchItemStatus.PROCESSING -> {
-                            CircularProgressIndicator(
-                                progress = { animatedProgress },
-                                strokeWidth = 3.dp,
-                                color = DecifluxElectricCyan,
-                                trackColor = Color(0xFF1E293B),
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                        BatchItemStatus.ANALYZING -> {
-                            CircularProgressIndicator(
-                                strokeWidth = 3.dp,
-                                color = DecifluxLuminousViolet,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                        BatchItemStatus.FAILED -> {
-                            Icon(
-                                imageVector = Icons.Default.Error,
-                                contentDescription = "Failed",
-                                tint = DecifluxErrorRed,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        else -> {
-                            Icon(
-                                imageVector = Icons.Default.Movie,
-                                contentDescription = "Video",
-                                tint = Color(0xFF94A3B8),
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
+                QueueItemStatusIcon(status = item.status, animatedProgress = animatedProgress)
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Title, Duration, Size, and Status Details
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.filename,
@@ -146,80 +90,144 @@ fun QueueItemCard(
                             fontSize = 11.sp,
                             color = Color(0xFF94A3B8)
                         )
-
-                        // Completed Loudness Delta Badge
                         if (item.status == BatchItemStatus.COMPLETED && item.initialLufs != null) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF132F24))
-                                    .padding(horizontal = 5.dp, vertical = 1.dp)
-                            ) {
-                                Text(
-                                    text = String.format("%.0f ➔ %.0f LUFS", item.initialLufs, item.normalizedLufs ?: -14f),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DecifluxEmeraldPeak
-                                )
-                            }
+                            LoudnessDeltaBadge(initialLufs = item.initialLufs, normalizedLufs = item.normalizedLufs)
                         }
                     }
                 }
 
-                // Actions: Preview or Remove
-                if (item.status == BatchItemStatus.COMPLETED) {
-                    IconButton(onClick = onPreview, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Preview",
-                            tint = DecifluxEmeraldPeak,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                } else if (!isBatchRunning) {
-                    IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove",
-                            tint = Color(0xFF64748B),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-
-            // Real-time Progress Bar & Status Text (During Active Processing)
-            if (item.status == BatchItemStatus.PROCESSING || item.status == BatchItemStatus.ANALYZING) {
-                Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = DecifluxElectricCyan,
-                    trackColor = Color(0xFF1E293B)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = item.statusMessage,
-                    fontSize = 10.sp,
-                    color = DecifluxElectricCyan,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            } else if (item.status == BatchItemStatus.FAILED && item.errorReason != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = item.errorReason,
-                    fontSize = 10.sp,
-                    color = DecifluxErrorRed,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                QueueItemActionButton(
+                    status = item.status,
+                    isBatchRunning = isBatchRunning,
+                    onPreview = onPreview,
+                    onRemove = onRemove
                 )
             }
+
+            QueueItemProgressSection(item = item, animatedProgress = animatedProgress)
         }
+    }
+}
+
+@Composable
+private fun QueueItemStatusIcon(status: BatchItemStatus, animatedProgress: Float) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(DecifluxSurfaceVariantDark),
+        contentAlignment = Alignment.Center
+    ) {
+        when (status) {
+            BatchItemStatus.COMPLETED -> Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Completed",
+                tint = DecifluxEmeraldPeak,
+                modifier = Modifier.size(24.dp)
+            )
+            BatchItemStatus.PROCESSING -> CircularProgressIndicator(
+                progress = { animatedProgress },
+                strokeWidth = 3.dp,
+                color = DecifluxElectricCyan,
+                trackColor = Color(0xFF1E293B),
+                modifier = Modifier.size(26.dp)
+            )
+            BatchItemStatus.ANALYZING -> CircularProgressIndicator(
+                strokeWidth = 3.dp,
+                color = DecifluxLuminousViolet,
+                modifier = Modifier.size(26.dp)
+            )
+            BatchItemStatus.FAILED -> Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = "Failed",
+                tint = DecifluxErrorRed,
+                modifier = Modifier.size(24.dp)
+            )
+            else -> Icon(
+                imageVector = Icons.Default.Movie,
+                contentDescription = "Video",
+                tint = Color(0xFF94A3B8),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoudnessDeltaBadge(initialLufs: Float, normalizedLufs: Float?) {
+    Spacer(modifier = Modifier.width(6.dp))
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF132F24))
+            .padding(horizontal = 5.dp, vertical = 1.dp)
+    ) {
+        Text(
+            text = String.format("%.0f ➔ %.0f LUFS", initialLufs, normalizedLufs ?: -14f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = DecifluxEmeraldPeak
+        )
+    }
+}
+
+@Composable
+private fun QueueItemActionButton(
+    status: BatchItemStatus,
+    isBatchRunning: Boolean,
+    onPreview: () -> Unit,
+    onRemove: () -> Unit
+) {
+    if (status == BatchItemStatus.COMPLETED) {
+        IconButton(onClick = onPreview, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Preview",
+                tint = DecifluxEmeraldPeak,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    } else if (!isBatchRunning) {
+        IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove",
+                tint = Color(0xFF64748B),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun QueueItemProgressSection(item: VideoBatchItem, animatedProgress: Float) {
+    if (item.status == BatchItemStatus.PROCESSING || item.status == BatchItemStatus.ANALYZING) {
+        Spacer(modifier = Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = DecifluxElectricCyan,
+            trackColor = Color(0xFF1E293B)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = item.statusMessage,
+            fontSize = 10.sp,
+            color = DecifluxElectricCyan,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    } else if (item.status == BatchItemStatus.FAILED && item.errorReason != null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = item.errorReason,
+            fontSize = 10.sp,
+            color = DecifluxErrorRed,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

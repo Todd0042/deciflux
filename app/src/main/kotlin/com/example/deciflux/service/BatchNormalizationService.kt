@@ -22,6 +22,7 @@ import com.example.deciflux.data.BatchQueueRepository
 import com.example.deciflux.engine.FFmpegAudioNormalizer
 import com.example.deciflux.model.BatchItemStatus
 import com.example.deciflux.model.LogTag
+import com.example.deciflux.model.NormalizationConfig
 import com.example.deciflux.model.TerminalLogEntry
 import com.example.deciflux.model.VideoBatchItem
 import com.example.deciflux.util.MediaUriHelper
@@ -170,89 +171,17 @@ class BatchNormalizationService : Service() {
                 delay(500)
             }
             if (isBatchCancelled) break
-
             if (item.status != BatchItemStatus.QUEUED) continue
 
-            BatchQueueRepository.setCurrentItem(item.id)
-            BatchQueueRepository.updateItem(item.id) {
-                it.copy(status = BatchItemStatus.ANALYZING, statusMessage = "Pass 1: Analyzing Loudness...")
-            }
-
             val itemIndex = items.indexOfFirst { it.id == item.id } + 1
-            val notificationTitle = "Processing $itemIndex of $totalCount"
-            updateNotification(
-                title = notificationTitle,
-                message = item.filename,
-                progress = ((itemIndex - 1).toFloat() / totalCount.toFloat() * 100).toInt(),
-                max = 100
-            )
+            prepareItemForProcessing(item, itemIndex, totalCount)
 
-            BatchQueueRepository.addLog(
-                TerminalLogEntry(
-                    tag = LogTag.INFO,
-                    message = "=================================================="
-                )
-            )
-            BatchQueueRepository.addLog(
-                TerminalLogEntry(
-                    tag = LogTag.INFO,
-                    message = "[$itemIndex/$totalCount] Starting: ${item.filename} (${item.formattedDuration})"
-                )
-            )
-
-            // Pre-flight safeguard: verify storage capacity before processing video
-            val (hasSpace, freeBytes) = MediaUriHelper.checkStorageCapacity(this, item.sizeBytes)
-            if (!hasSpace) {
-                val freeMb = freeBytes / (1024 * 1024)
-                val requiredMb = (item.sizeBytes / (1024 * 1024)) + 250
-                val errorReason = "Insufficient storage space: ${freeMb}MB free, requires ~${requiredMb}MB"
-                BatchQueueRepository.updateItem(item.id) {
-                    it.copy(
-                        status = BatchItemStatus.FAILED,
-                        statusMessage = errorReason,
-                        errorReason = errorReason
-                    )
-                }
-                BatchQueueRepository.addLog(
-                    TerminalLogEntry(tag = LogTag.ERROR, message = "[$itemIndex/$totalCount] Skipped ${item.filename}: $errorReason")
-                )
+            if (!checkStorageSafeguard(item, itemIndex, totalCount)) {
                 continue
             }
 
-            // Isolated temporary output file
             val tempOutputFile = File(cacheDir, "deciflux_tmp_${System.currentTimeMillis()}.mp4")
-
-            val result = normalizer.normalizeVideo(
-                inputUri = item.uri,
-                durationMs = item.durationMs,
-                config = config,
-                tempOutputFile = tempOutputFile,
-                onLog = { entry -> BatchQueueRepository.addLog(entry) },
-                onProgress = { pass, progress, speed, eta ->
-                    BatchQueueRepository.setSpeedAndEta(speed, eta)
-                    val statusText = if (pass == 1) {
-                        "Pass 1/2: Analyzing (Speed: $speed)"
-                    } else {
-                        "Pass 2/2: Remuxing (${(progress * 100).toInt()}%, Speed: $speed, ETA: $eta)"
-                    }
-
-                    BatchQueueRepository.updateItem(item.id) {
-                        it.copy(
-                            status = BatchItemStatus.PROCESSING,
-                            progress = progress,
-                            statusMessage = statusText
-                        )
-                    }
-
-                    val overallPercent = ((processedCount.toFloat() + progress) / totalCount.toFloat() * 100).toInt()
-                    updateNotification(
-                        title = "Processing $itemIndex of $totalCount (${overallPercent}%)",
-                        message = "${item.filename} • ETA: $eta",
-                        progress = overallPercent,
-                        max = 100
-                    )
-                }
-            )
+            val result = executeItemNormalization(item, config, tempOutputFile, itemIndex, totalCount, processedCount)
 
             if (isBatchCancelled || !serviceScope.isActive) {
                 tempOutputFile.delete()
@@ -260,69 +189,10 @@ class BatchNormalizationService : Service() {
             }
 
             if (result.isSuccess) {
-                val analysis = result.getOrNull()
-                // Atomic move to Movies/Deciflux MediaStore collection
-                val finalUri = saveVideoToMediaStore(tempOutputFile, item.filename, config.outputSuffix)
-                tempOutputFile.delete()
-
-                // If user enabled "Replace original file", delete original after verified successful export
-                if (config.replaceOriginal && finalUri != null) {
-                    val deleted = MediaUriHelper.deleteOriginalUri(this, item.uri)
-                    if (deleted) {
-                        BatchQueueRepository.addLog(
-                            TerminalLogEntry(
-                                tag = LogTag.INFO,
-                                message = "Original file replaced/deleted: ${item.filename}"
-                            )
-                        )
-                    } else {
-                        BatchQueueRepository.addLog(
-                            TerminalLogEntry(
-                                tag = LogTag.WARN,
-                                message = "Could not delete original file (system permission restricted). Normalized file preserved in Movies/Deciflux."
-                            )
-                        )
-                    }
-                }
-
                 processedCount++
-                BatchQueueRepository.updateItem(item.id) {
-                    it.copy(
-                        status = BatchItemStatus.COMPLETED,
-                        progress = 1.0f,
-                        statusMessage = "Completed",
-                        initialLufs = analysis?.inputI,
-                        initialPeak = analysis?.inputTp,
-                        normalizedLufs = config.targetLufs,
-                        outputUri = finalUri
-                    )
-                }
-
-                BatchQueueRepository.addLog(
-                    TerminalLogEntry(
-                        tag = LogTag.SUCCESS,
-                        message = "[$itemIndex/$totalCount] Successfully normalized and saved: ${item.filename}"
-                    )
-                )
+                handleItemSuccess(item, result.getOrNull(), tempOutputFile, config, itemIndex, totalCount)
             } else {
-                tempOutputFile.delete()
-                if (isBatchCancelled) {
-                    break
-                }
-                val errorReason = result.exceptionOrNull()?.localizedMessage ?: "Unknown error"
-                BatchQueueRepository.updateItem(item.id) {
-                    it.copy(
-                        status = BatchItemStatus.FAILED,
-                        statusMessage = "Failed: $errorReason",
-                        errorReason = errorReason
-                    )
-                }
-                BatchQueueRepository.addLog(
-                    TerminalLogEntry(
-                        tag = LogTag.ERROR,
-                        message = "[$itemIndex/$totalCount] Processing failed for ${item.filename}: $errorReason"
-                    )
-                )
+                handleItemFailure(item, result, tempOutputFile, itemIndex, totalCount)
             }
 
             // If user requested pause after current video, enter paused state now
@@ -369,6 +239,119 @@ class BatchNormalizationService : Service() {
             if (it.isHeld) it.release()
         }
         androidx.core.app.ServiceCompat.stopForeground(this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_DETACH)
+    }
+
+    private fun prepareItemForProcessing(item: VideoBatchItem, itemIndex: Int, totalCount: Int) {
+        BatchQueueRepository.setCurrentItem(item.id)
+        BatchQueueRepository.updateItem(item.id) {
+            it.copy(status = BatchItemStatus.ANALYZING, statusMessage = "Pass 1: Analyzing Loudness...")
+        }
+        updateNotification(
+            title = "Processing $itemIndex of $totalCount",
+            message = item.filename,
+            progress = ((itemIndex - 1).toFloat() / totalCount.toFloat() * 100).toInt(),
+            max = 100
+        )
+        BatchQueueRepository.addLog(TerminalLogEntry(tag = LogTag.INFO, message = "=================================================="))
+        BatchQueueRepository.addLog(TerminalLogEntry(tag = LogTag.INFO, message = "[$itemIndex/$totalCount] Starting: ${item.filename} (${item.formattedDuration})"))
+    }
+
+    private fun checkStorageSafeguard(item: VideoBatchItem, itemIndex: Int, totalCount: Int): Boolean {
+        val (hasSpace, freeBytes) = MediaUriHelper.checkStorageCapacity(this, item.sizeBytes)
+        if (!hasSpace) {
+            val freeMb = freeBytes / (1024 * 1024)
+            val requiredMb = (item.sizeBytes / (1024 * 1024)) + 250
+            val errorReason = "Insufficient storage space: ${freeMb}MB free, requires ~${requiredMb}MB"
+            BatchQueueRepository.updateItem(item.id) {
+                it.copy(status = BatchItemStatus.FAILED, statusMessage = errorReason, errorReason = errorReason)
+            }
+            BatchQueueRepository.addLog(TerminalLogEntry(tag = LogTag.ERROR, message = "[$itemIndex/$totalCount] Skipped ${item.filename}: $errorReason"))
+            return false
+        }
+        return true
+    }
+
+    private suspend fun executeItemNormalization(
+        item: VideoBatchItem,
+        config: NormalizationConfig,
+        tempOutputFile: File,
+        itemIndex: Int,
+        totalCount: Int,
+        processedCount: Int
+    ): Result<com.example.deciflux.engine.LoudnormAnalysis> {
+        return normalizer.normalizeVideo(
+            inputUri = item.uri,
+            durationMs = item.durationMs,
+            config = config,
+            tempOutputFile = tempOutputFile,
+            onLog = { entry -> BatchQueueRepository.addLog(entry) },
+            onProgress = { pass, progress, speed, eta ->
+                BatchQueueRepository.setSpeedAndEta(speed, eta)
+                val statusText = if (pass == 1) {
+                    "Pass 1/2: Analyzing (Speed: $speed)"
+                } else {
+                    "Pass 2/2: Remuxing (${(progress * 100).toInt()}%, Speed: $speed, ETA: $eta)"
+                }
+                BatchQueueRepository.updateItem(item.id) {
+                    it.copy(status = BatchItemStatus.PROCESSING, progress = progress, statusMessage = statusText)
+                }
+                val overallPercent = ((processedCount.toFloat() + progress) / totalCount.toFloat() * 100).toInt()
+                updateNotification(
+                    title = "Processing $itemIndex of $totalCount (${overallPercent}%)",
+                    message = "${item.filename} • ETA: $eta",
+                    progress = overallPercent,
+                    max = 100
+                )
+            }
+        )
+    }
+
+    private fun handleItemSuccess(
+        item: VideoBatchItem,
+        analysis: com.example.deciflux.engine.LoudnormAnalysis?,
+        tempOutputFile: File,
+        config: NormalizationConfig,
+        itemIndex: Int,
+        totalCount: Int
+    ) {
+        val finalUri = saveVideoToMediaStore(tempOutputFile, item.filename, config.outputSuffix)
+        tempOutputFile.delete()
+
+        if (config.replaceOriginal && finalUri != null) {
+            val deleted = MediaUriHelper.deleteOriginalUri(this, item.uri)
+            val msg = if (deleted) "Original file replaced/deleted: ${item.filename}" else "Could not delete original file (system permission restricted). Normalized file preserved in Movies/Deciflux."
+            val tag = if (deleted) LogTag.INFO else LogTag.WARN
+            BatchQueueRepository.addLog(TerminalLogEntry(tag = tag, message = msg))
+        }
+
+        BatchQueueRepository.updateItem(item.id) {
+            it.copy(
+                status = BatchItemStatus.COMPLETED,
+                progress = 1.0f,
+                statusMessage = "Completed",
+                initialLufs = analysis?.inputI,
+                initialPeak = analysis?.inputTp,
+                normalizedLufs = config.targetLufs,
+                outputUri = finalUri
+            )
+        }
+        BatchQueueRepository.addLog(TerminalLogEntry(tag = LogTag.SUCCESS, message = "[$itemIndex/$totalCount] Successfully normalized and saved: ${item.filename}"))
+    }
+
+    private fun handleItemFailure(
+        item: VideoBatchItem,
+        result: Result<*>,
+        tempOutputFile: File,
+        itemIndex: Int,
+        totalCount: Int
+    ) {
+        tempOutputFile.delete()
+        if (isBatchCancelled) return
+        val errorReason = result.exceptionOrNull()?.localizedMessage ?: "Unknown error"
+        BatchQueueRepository.updateItem(item.id) {
+            it.copy(status = BatchItemStatus.FAILED, statusMessage = "Failed: $errorReason", errorReason = errorReason)
+        }
+        BatchQueueRepository.addLog(TerminalLogEntry(tag = LogTag.ERROR, message = "[$itemIndex/$totalCount] Processing failed for ${item.filename}: $errorReason"))
     }
 
     private fun saveVideoToMediaStore(tempFile: File, originalName: String, suffix: String): Uri? {
