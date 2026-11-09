@@ -60,3 +60,4 @@ Thumbs.db
 
 # Captures and profiling
 /captures
+*.sha256
