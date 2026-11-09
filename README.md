@@ -112,7 +112,7 @@ Deciflux is built with Jetpack Compose Material 3 following a sleek dark obsidia
 
 Download the latest pre-compiled signed APK directly from the [Deciflux GitHub Releases](https://github.com/Todd0042/deciflux/releases):
 
-1. Download **`Deciflux-v1.0.0.apk`** to your Android device.
+1. Download **`deciflux-v1.0.0.apk`** to your Android device.
 2. Open the downloaded file and confirm installation when prompted by Android Package Installer.
 3. Launch **Deciflux** and complete the quick 4-step setup walkthrough.
 
@@ -333,7 +333,26 @@ deciflux/
 │       └── util/
 │           ├── FolderScanner.kt                   # Recursive DocumentFile SAF folder scanner
 │           ├── MediaUriHelper.kt                  # File descriptors, StatFs check, transactional deletion
+│           ├── PermissionChecker.kt               # Explicit runtime boundary verification (Storage & Battery)
 │           └── SecuritySanitizer.kt               # Defensive path traversal and shell sanitation
+├── app/src/test/kotlin/com/example/deciflux/      # 55 automated unit tests across 12 test suites
+│   ├── data/
+│   │   └── BatchQueueRepositoryTest.kt            # StateFlow mutations & queue lifecycle tests
+│   ├── engine/
+│   │   ├── FFmpegAudioNormalizerTest.kt           # Filter chain assembly & dynaudnorm parameter tests
+│   │   ├── LoudnormParserTest.kt                  # EBU R128 JSON block parser tests
+│   │   └── TelemetryParserTest.kt                 # Live speed, ETA & progress parser tests
+│   ├── model/
+│   │   ├── NormalizationConfigTest.kt             # Preset configurations & codec constraints tests
+│   │   ├── TerminalLogEntryTest.kt                # Terminal log tagging & string formatting tests
+│   │   └── VideoBatchItemTest.kt                  # Queue item state, LUFS metrics & duration tests
+│   ├── ui/main/
+│   │   └── MainScreenViewModelTest.kt             # Queue management & intake interaction tests
+│   └── util/
+│       ├── FolderScannerTest.kt                   # SAF folder intake & extension filtering tests
+│       ├── MediaUriHelperTest.kt                  # Pre-flight disk capacity & file utility tests
+│       ├── PermissionCheckerTest.kt               # Android runtime permission & battery exemption tests
+│       └── SecuritySanitizerTest.kt               # Path traversal & shell sanitation tests
 ```
 
 ---
@@ -351,7 +370,7 @@ deciflux/
 git clone https://github.com/Todd0042/deciflux.git
 cd deciflux
 
-# Run automated unit tests
+# Run automated unit tests (55 tests across 12 suites)
 ./gradlew testDebugUnitTest
 
 # Assemble Debug APK
@@ -367,6 +386,23 @@ cd deciflux
 
 Distributed under the **PolyForm Noncommercial License 1.0.0**.
 
-Free for personal, creator, educational, and hobbyist use. Commercial distribution or integration requires a separate commercial license from the author.
+Free for personal, creator, educational, and hobbyist use. Commercial distribution, proprietary integration, or commercial venue playback requires a separate commercial license from the author. For commercial licensing inquiries, contact [scottrb1982@gmail.com](mailto:scottrb1982@gmail.com).
 
 Deciflux bundles FFmpeg built under LGPL/GPL licensing terms via `youtubedl-android`. All native binary extraction and execution is performed locally on device in accordance with open-source licensing.
+
+---
+
+<p align="center">
+  If you find Deciflux useful for your audio workflows, consider supporting open-source development:<br/><br/>
+  <a href="https://ko-fi.com/todd0042" target="_blank">
+    <img src="https://img.shields.io/badge/☕_Support_Deciflux_on_Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Support on Ko-fi">
+  </a>
+</p>
+
+---
+
+<p align="center">
+  <a href="https://ko-fi.com/todd0042">
+    <img src="https://raw.githubusercontent.com/Todd0042/creator-assets/main/banners/todd_creator_banner_v1.0.png" alt="Support Todd on Ko-fi" width="100%" />
+  </a>
+</p>
