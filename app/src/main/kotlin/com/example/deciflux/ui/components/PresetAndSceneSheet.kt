@@ -67,6 +67,7 @@ import com.example.deciflux.ui.theme.DecifluxElectricCyan
 import com.example.deciflux.ui.theme.DecifluxEmeraldPeak
 import com.example.deciflux.ui.theme.DecifluxLuminousViolet
 import com.example.deciflux.ui.theme.DecifluxSurfaceVariantDark
+import com.example.deciflux.ui.theme.DecifluxWarningAmber
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -374,6 +375,61 @@ fun PresetAndSceneSheet(
                             labelColor = Color.White
                         )
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 4. Output File Management (Replace original files vs Movies/Deciflux)
+            Text(
+                text = "Output File Management",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = DecifluxElectricCyan,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DecifluxSurfaceVariantDark),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DecifluxCardBorder),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Replace Original Files",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = if (config.replaceOriginal) {
+                                    "Deletes the original video after the normalized copy is verified and saved"
+                                } else {
+                                    "Saves normalized videos to Movies/Deciflux without modifying originals"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (config.replaceOriginal) DecifluxWarningAmber else Color(0xFF94A3B8)
+                            )
+                        }
+
+                        Switch(
+                            checked = config.replaceOriginal,
+                            onCheckedChange = { onConfigChange(config.copy(replaceOriginal = it)) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = DecifluxWarningAmber,
+                                uncheckedThumbColor = Color.Gray,
+                                uncheckedTrackColor = Color(0xFF262D3D)
+                            )
+                        )
+                    }
                 }
             }
         }

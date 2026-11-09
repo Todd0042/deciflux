@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideoFile
@@ -97,6 +98,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    onOpenSetup: () -> Unit = {},
     viewModel: MainScreenViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -239,6 +241,16 @@ fun MainScreen(
                             color = DecifluxEmeraldPeak,
                             trackColor = Color(0xFF1E293B),
                             strokeWidth = 3.dp
+                        )
+                    }
+
+                    // Setup / Permissions Walkthrough
+                    IconButton(onClick = onOpenSetup) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = "Permissions & Setup",
+                            tint = DecifluxElectricCyan,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 

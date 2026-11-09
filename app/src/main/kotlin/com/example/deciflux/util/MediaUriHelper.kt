@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
 import com.example.deciflux.model.VideoBatchItem
@@ -122,6 +123,41 @@ object MediaUriHelper {
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to copy output file to target URI: $targetUri", e)
+            false
+        }
+    }
+
+    /**
+     * Checks if internal/cache storage has sufficient free space for the operation.
+     * Requires at least the file size plus a 250 MB safety margin.
+     */
+    fun checkStorageCapacity(context: Context, requiredBytes: Long): Pair<Boolean, Long> {
+        return try {
+            val stat = android.os.StatFs(context.cacheDir.absolutePath)
+            val availableBytes = stat.availableBytes
+            val safetyMargin = 250L * 1024L * 1024L // 250 MB safety margin
+            val hasEnough = availableBytes > (requiredBytes + safetyMargin)
+            Pair(hasEnough, availableBytes)
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to inspect storage capacity", e)
+            Pair(true, Long.MAX_VALUE)
+        }
+    }
+
+    /**
+     * Safely deletes the original source video file if permission is held (e.g. SAF DocumentFile or MediaStore).
+     * Returns true if deleted, false if permission was denied or file could not be removed.
+     */
+    fun deleteOriginalUri(context: Context, uri: Uri): Boolean {
+        return try {
+            if (DocumentsContract.isDocumentUri(context, uri)) {
+                DocumentsContract.deleteDocument(context.contentResolver, uri)
+            } else {
+                val deletedRows = context.contentResolver.delete(uri, null, null)
+                deletedRows > 0
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to delete original file at $uri (requires explicit delete permission on scoped storage)", e)
             false
         }
     }

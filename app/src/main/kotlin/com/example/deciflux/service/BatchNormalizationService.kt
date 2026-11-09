@@ -200,6 +200,25 @@ class BatchNormalizationService : Service() {
                 )
             )
 
+            // Pre-flight safeguard: verify storage capacity before processing video
+            val (hasSpace, freeBytes) = MediaUriHelper.checkStorageCapacity(this, item.sizeBytes)
+            if (!hasSpace) {
+                val freeMb = freeBytes / (1024 * 1024)
+                val requiredMb = (item.sizeBytes / (1024 * 1024)) + 250
+                val errorReason = "Insufficient storage space: ${freeMb}MB free, requires ~${requiredMb}MB"
+                BatchQueueRepository.updateItem(item.id) {
+                    it.copy(
+                        status = BatchItemStatus.FAILED,
+                        statusMessage = errorReason,
+                        errorReason = errorReason
+                    )
+                }
+                BatchQueueRepository.addLog(
+                    TerminalLogEntry(tag = LogTag.ERROR, message = "[$itemIndex/$totalCount] Skipped ${item.filename}: $errorReason")
+                )
+                continue
+            }
+
             // Isolated temporary output file
             val tempOutputFile = File(cacheDir, "deciflux_tmp_${System.currentTimeMillis()}.mp4")
 
@@ -245,6 +264,26 @@ class BatchNormalizationService : Service() {
                 // Atomic move to Movies/Deciflux MediaStore collection
                 val finalUri = saveVideoToMediaStore(tempOutputFile, item.filename, config.outputSuffix)
                 tempOutputFile.delete()
+
+                // If user enabled "Replace original file", delete original after verified successful export
+                if (config.replaceOriginal && finalUri != null) {
+                    val deleted = MediaUriHelper.deleteOriginalUri(this, item.uri)
+                    if (deleted) {
+                        BatchQueueRepository.addLog(
+                            TerminalLogEntry(
+                                tag = LogTag.INFO,
+                                message = "Original file replaced/deleted: ${item.filename}"
+                            )
+                        )
+                    } else {
+                        BatchQueueRepository.addLog(
+                            TerminalLogEntry(
+                                tag = LogTag.WARN,
+                                message = "Could not delete original file (system permission restricted). Normalized file preserved in Movies/Deciflux."
+                            )
+                        )
+                    }
+                }
 
                 processedCount++
                 BatchQueueRepository.updateItem(item.id) {
