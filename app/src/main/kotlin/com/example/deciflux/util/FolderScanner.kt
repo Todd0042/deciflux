@@ -49,13 +49,27 @@ object FolderScanner {
         foundItems
     }
 
+    /**
+     * Checks if a given file extension is a recognized video format.
+     */
+    fun isSupportedVideoExtension(extension: String): Boolean {
+        return extension.lowercase() in SUPPORTED_VIDEO_EXTENSIONS
+    }
+
+    /**
+     * Checks if a filename has a recognized video extension.
+     */
+    fun isSupportedVideoFilename(filename: String): Boolean {
+        val ext = filename.substringAfterLast('.', "")
+        return isSupportedVideoExtension(ext)
+    }
+
     private fun isVideoFile(file: DocumentFile): Boolean {
         val type = file.type
         if (type != null && type.startsWith("video/", ignoreCase = true)) {
             return true
         }
         val name = file.name ?: return false
-        val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in SUPPORTED_VIDEO_EXTENSIONS
+        return isSupportedVideoFilename(name)
     }
 }

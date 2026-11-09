@@ -60,6 +60,42 @@ object MediaUriHelper {
     }
 
     /**
+     * Resolves the appropriate file extension given the URI scheme, filesystem path, or MIME type.
+     */
+    fun determineFileExtension(scheme: String?, path: String?, mimeType: String?): String {
+        if (scheme == ContentResolver.SCHEME_FILE) {
+            return path?.substringAfterLast('.', "mp4") ?: "mp4"
+        }
+        return when (mimeType) {
+            "video/quicktime" -> "mov"
+            "video/x-matroska" -> "mkv"
+            "video/webm" -> "webm"
+            "video/avi" -> "avi"
+            else -> "mp4"
+        }
+    }
+
+    /**
+     * Copies an input stream to an output stream with periodic byte progress reporting.
+     */
+    fun copyStreamWithProgress(
+        inStream: java.io.InputStream,
+        outStream: java.io.OutputStream,
+        onProgress: ((copiedBytes: Long, totalBytes: Long) -> Unit)? = null
+    ): Long {
+        val buffer = ByteArray(128 * 1024)
+        var bytesRead: Int
+        var totalCopied = 0L
+        while (inStream.read(buffer).also { bytesRead = it } != -1) {
+            outStream.write(buffer, 0, bytesRead)
+            totalCopied += bytesRead
+            onProgress?.invoke(totalCopied, -1L)
+        }
+        outStream.flush()
+        return totalCopied
+    }
+
+    /**
      * Prepares an accessible input file for FFmpeg.
      * Copies the content URI stream to a temporary cached file in context.cacheDir
      * ensuring direct POSIX filesystem access for the external FFmpeg child process.
@@ -70,32 +106,13 @@ object MediaUriHelper {
         onProgress: ((copiedBytes: Long, totalBytes: Long) -> Unit)? = null
     ): File? {
         return try {
-            val extension = when {
-                uri.scheme == ContentResolver.SCHEME_FILE -> uri.path?.substringAfterLast('.', "mp4") ?: "mp4"
-                else -> {
-                    val mime = context.contentResolver.getType(uri)
-                    when (mime) {
-                        "video/quicktime" -> "mov"
-                        "video/x-matroska" -> "mkv"
-                        "video/webm" -> "webm"
-                        "video/avi" -> "avi"
-                        else -> "mp4"
-                    }
-                }
-            }
-
+            val mime = if (uri.scheme == ContentResolver.SCHEME_FILE) null else context.contentResolver.getType(uri)
+            val extension = determineFileExtension(uri.scheme, uri.path, mime)
             val tempFile = File(context.cacheDir, "input_stream_${System.currentTimeMillis()}.$extension")
+
             context.contentResolver.openInputStream(uri)?.use { inStream ->
                 FileOutputStream(tempFile).use { outStream ->
-                    val buffer = ByteArray(128 * 1024)
-                    var bytesRead: Int
-                    var totalCopied = 0L
-                    while (inStream.read(buffer).also { bytesRead = it } != -1) {
-                        outStream.write(buffer, 0, bytesRead)
-                        totalCopied += bytesRead
-                        onProgress?.invoke(totalCopied, -1L)
-                    }
-                    outStream.flush()
+                    copyStreamWithProgress(inStream, outStream, onProgress)
                 }
             }
             if (tempFile.exists() && tempFile.length() > 0L) {

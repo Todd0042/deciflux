@@ -172,14 +172,18 @@ class BatchNormalizationService : Service() {
             }
             if (isBatchCancelled || !serviceScope.isActive) break
 
-            if (BatchQueueRepository.pauseAfterCurrent.value) {
-                BatchQueueRepository.setPauseAfterCurrent(false)
-                pauseBatchProcessing()
-            }
+            checkScheduledPause()
         }
 
         if (!isBatchCancelled) {
             finishBatch(totalCount)
+        }
+    }
+
+    private fun checkScheduledPause() {
+        if (BatchQueueRepository.pauseAfterCurrent.value) {
+            BatchQueueRepository.setPauseAfterCurrent(false)
+            pauseBatchProcessing()
         }
     }
 

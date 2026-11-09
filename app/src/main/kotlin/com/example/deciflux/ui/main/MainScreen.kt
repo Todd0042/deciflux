@@ -603,120 +603,176 @@ private fun BatchDockedControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Active Preset Pill
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DecifluxSurfaceVariantDark)
-                    .clickable(onClick = onOpenPresetSheet)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = null,
-                    tint = DecifluxElectricCyan,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Column {
-                    Text(
-                        text = "${config.preset.title} (${config.targetLufs.toInt()} LUFS)",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    val sceneStatus = if (config.sceneLevelingEnabled) {
-                        "Scene Leveling: ${config.sceneLevelingIntensity.label}"
-                    } else {
-                        "Scene Leveling: OFF"
-                    }
-                    Text(
-                        text = sceneStatus,
-                        fontSize = 10.sp,
-                        color = if (config.sceneLevelingEnabled) DecifluxLuminousViolet else Color(0xFF94A3B8)
-                    )
-                }
-            }
+            BatchPresetPill(
+                config = config,
+                onClick = onOpenPresetSheet,
+                modifier = Modifier.weight(1f)
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            if (!isProcessing) {
-                Button(
-                    onClick = onStart,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DecifluxElectricCyan,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Start", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            } else if (isPaused) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Button(
-                        onClick = onResume,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DecifluxEmeraldPeak,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
+            BatchActionControls(
+                isProcessing = isProcessing,
+                isPaused = isPaused,
+                pauseAfterCurrent = pauseAfterCurrent,
+                onStart = onStart,
+                onResume = onResume,
+                onTogglePause = onTogglePause,
+                onCancel = onCancel
+            )
+        }
+    }
+}
 
-                    Button(
-                        onClick = onCancel,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DecifluxErrorRed,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
-                    }
-                }
+@Composable
+private fun BatchPresetPill(
+    config: NormalizationConfig,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(DecifluxSurfaceVariantDark)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Tune,
+            contentDescription = null,
+            tint = DecifluxElectricCyan,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Column {
+            Text(
+                text = "${config.preset.title} (${config.targetLufs.toInt()} LUFS)",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val sceneStatus = if (config.sceneLevelingEnabled) {
+                "Scene Leveling: ${config.sceneLevelingIntensity.label}"
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Button(
-                        onClick = onTogglePause,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (pauseAfterCurrent) DecifluxWarningAmber else Color(0xFF262D3D),
-                            contentColor = if (pauseAfterCurrent) Color.Black else Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (pauseAfterCurrent) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = if (pauseAfterCurrent) "Cancel scheduled pause" else "Pause after current video",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    Button(
-                        onClick = onCancel,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DecifluxErrorRed,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop immediately", modifier = Modifier.size(16.dp))
-                    }
-                }
+                "Scene Leveling: OFF"
             }
+            Text(
+                text = sceneStatus,
+                fontSize = 10.sp,
+                color = if (config.sceneLevelingEnabled) DecifluxLuminousViolet else Color(0xFF94A3B8)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatchActionControls(
+    isProcessing: Boolean,
+    isPaused: Boolean,
+    pauseAfterCurrent: Boolean,
+    onStart: () -> Unit,
+    onResume: () -> Unit,
+    onTogglePause: () -> Unit,
+    onCancel: () -> Unit
+) {
+    when {
+        !isProcessing -> IdleStartButton(onClick = onStart)
+        isPaused -> PausedControls(onResume = onResume, onCancel = onCancel)
+        else -> RunningControls(
+            pauseAfterCurrent = pauseAfterCurrent,
+            onTogglePause = onTogglePause,
+            onCancel = onCancel
+        )
+    }
+}
+
+@Composable
+private fun IdleStartButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = DecifluxElectricCyan,
+            contentColor = Color.Black
+        ),
+        shape = RoundedCornerShape(10.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("Start", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun PausedControls(
+    onResume: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(
+            onClick = onResume,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = DecifluxEmeraldPeak,
+                contentColor = Color.Black
+            ),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Resume", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+
+        Button(
+            onClick = onCancel,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = DecifluxErrorRed,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun RunningControls(
+    pauseAfterCurrent: Boolean,
+    onTogglePause: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(
+            onClick = onTogglePause,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (pauseAfterCurrent) DecifluxWarningAmber else Color(0xFF262D3D),
+                contentColor = if (pauseAfterCurrent) Color.Black else Color.White
+            ),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+        ) {
+            Icon(
+                imageVector = if (pauseAfterCurrent) Icons.Default.PlayArrow else Icons.Default.Pause,
+                contentDescription = if (pauseAfterCurrent) "Cancel scheduled pause" else "Pause after current video",
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        Button(
+            onClick = onCancel,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = DecifluxErrorRed,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Stop, contentDescription = "Stop immediately", modifier = Modifier.size(16.dp))
         }
     }
 }

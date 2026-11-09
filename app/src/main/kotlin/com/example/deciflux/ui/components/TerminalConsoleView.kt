@@ -98,129 +98,22 @@ fun TerminalConsoleView(
         color = TerminalBackground
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Terminal Header Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(TerminalHeaderBg)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Title and Terminal Prompt Symbol
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = ">_ TERMINAL STATUS",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = DecifluxElectricCyan
-                    )
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    // Telemetry: Speed and ETA (when active)
-                    if (isProcessing && currentSpeed != "--") {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF1E2638))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = "Speed",
-                                tint = DecifluxEmeraldPeak,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = currentSpeed,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = DecifluxEmeraldPeak
-                            )
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            Icon(
-                                imageVector = Icons.Default.Timer,
-                                contentDescription = "ETA",
-                                tint = DecifluxLuminousViolet,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "ETA $currentEta",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = DecifluxLuminousViolet
-                            )
-                        }
-                    }
-                }
-
-                // Actions: Auto-scroll, Copy, Clear, Expand
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Auto-scroll toggle
-                    IconButton(
-                        onClick = { autoScroll = !autoScroll },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.VerticalAlignBottom,
-                            contentDescription = "Auto-scroll",
-                            tint = if (autoScroll) DecifluxElectricCyan else TerminalTextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    // Copy logs to clipboard
-                    IconButton(
-                        onClick = {
-                            val text = logs.joinToString("\n") { "[${it.formattedTime}] ${it.tag.display} ${it.message}" }
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Deciflux Logs", text))
-                            Toast.makeText(context, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy logs",
-                            tint = TerminalTextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    // Clear logs
-                    IconButton(
-                        onClick = onClearLogs,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteSweep,
-                            contentDescription = "Clear logs",
-                            tint = TerminalTextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    // Expand/Collapse height
-                    IconButton(
-                        onClick = { isExpanded = !isExpanded },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            contentDescription = "Toggle height",
-                            tint = DecifluxElectricCyan,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
+            TerminalHeaderBar(
+                isProcessing = isProcessing,
+                currentSpeed = currentSpeed,
+                currentEta = currentEta,
+                autoScroll = autoScroll,
+                isExpanded = isExpanded,
+                onToggleAutoScroll = { autoScroll = !autoScroll },
+                onCopyLogs = {
+                    val text = logs.joinToString("\n") { "[${it.formattedTime}] ${it.tag.display} ${it.message}" }
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Deciflux Logs", text))
+                    Toast.makeText(context, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
+                },
+                onClearLogs = onClearLogs,
+                onToggleExpanded = { isExpanded = !isExpanded }
+            )
 
             // Log Console Stream View
             LazyColumn(
@@ -234,6 +127,153 @@ fun TerminalConsoleView(
                     LogLineItem(log = log)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TerminalHeaderBar(
+    isProcessing: Boolean,
+    currentSpeed: String,
+    currentEta: String,
+    autoScroll: Boolean,
+    isExpanded: Boolean,
+    onToggleAutoScroll: () -> Unit,
+    onCopyLogs: () -> Unit,
+    onClearLogs: () -> Unit,
+    onToggleExpanded: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TerminalHeaderBg)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = ">_ TERMINAL STATUS",
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = DecifluxElectricCyan
+            )
+
+            if (isProcessing && currentSpeed != "--") {
+                Spacer(modifier = Modifier.width(10.dp))
+                TerminalSpeedAndEta(currentSpeed = currentSpeed, currentEta = currentEta)
+            }
+        }
+
+        TerminalHeaderActions(
+            autoScroll = autoScroll,
+            isExpanded = isExpanded,
+            onToggleAutoScroll = onToggleAutoScroll,
+            onCopyLogs = onCopyLogs,
+            onClearLogs = onClearLogs,
+            onToggleExpanded = onToggleExpanded
+        )
+    }
+}
+
+@Composable
+private fun TerminalSpeedAndEta(currentSpeed: String, currentEta: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF1E2638))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Speed,
+            contentDescription = "Speed",
+            tint = DecifluxEmeraldPeak,
+            modifier = Modifier.size(12.dp)
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(
+            text = currentSpeed,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = DecifluxEmeraldPeak
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Icon(
+            imageVector = Icons.Default.Timer,
+            contentDescription = "ETA",
+            tint = DecifluxLuminousViolet,
+            modifier = Modifier.size(12.dp)
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(
+            text = "ETA $currentEta",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = DecifluxLuminousViolet
+        )
+    }
+}
+
+@Composable
+private fun TerminalHeaderActions(
+    autoScroll: Boolean,
+    isExpanded: Boolean,
+    onToggleAutoScroll: () -> Unit,
+    onCopyLogs: () -> Unit,
+    onClearLogs: () -> Unit,
+    onToggleExpanded: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = onToggleAutoScroll,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.VerticalAlignBottom,
+                contentDescription = "Auto-scroll",
+                tint = if (autoScroll) DecifluxElectricCyan else TerminalTextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        IconButton(
+            onClick = onCopyLogs,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = "Copy logs",
+                tint = TerminalTextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        IconButton(
+            onClick = onClearLogs,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.DeleteSweep,
+                contentDescription = "Clear logs",
+                tint = TerminalTextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        IconButton(
+            onClick = onToggleExpanded,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = "Toggle height",
+                tint = DecifluxElectricCyan,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
