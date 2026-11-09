@@ -386,7 +386,7 @@ cd deciflux
 
 Distributed under the **PolyForm Noncommercial License 1.0.0**.
 
-Free for personal, creator, educational, and hobbyist use. Commercial distribution, proprietary integration, or commercial venue playback requires a separate commercial license from the author. For commercial licensing inquiries, contact [scottrb1982@gmail.com](mailto:scottrb1982@gmail.com).
+Free for personal, creator, educational, and hobbyist use. Commercial distribution, proprietary integration, or commercial venue playback requires a separate commercial license from the author. For commercial licensing inquiries, contact [Todd.0042.git@gmail.com](mailto:Todd.0042.git@gmail.com).
 
 Deciflux bundles FFmpeg built under LGPL/GPL licensing terms via `youtubedl-android`. All native binary extraction and execution is performed locally on device in accordance with open-source licensing.
 
