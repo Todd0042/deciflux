@@ -256,31 +256,39 @@ class FFmpegAudioNormalizer(private val context: Context) {
         return Result.success(Unit)
     }
 
-    private fun buildFilterChain(
-        config: NormalizationConfig,
-        analysis: LoudnormAnalysis,
-        onLog: (TerminalLogEntry) -> Unit
-    ): String {
-        return if (config.sceneLevelingEnabled) {
-            val intensity = config.sceneLevelingIntensity
-            val frameLenMs = (intensity.filterWindowSec * 1000).toInt()
-            val gaussSize = when (intensity) {
-                SceneLevelingIntensity.SUBTLE -> 45
-                SceneLevelingIntensity.BALANCED -> 31
-                SceneLevelingIntensity.CONSISTENT -> 21
-                SceneLevelingIntensity.CUSTOM -> 31
-            }
-            val maxGain = intensity.maxGainDb
+    companion object {
+        private const val TAG = "FFmpegNormalizer"
 
-            onLog(
-                TerminalLogEntry(
-                    tag = LogTag.SCENE,
-                    message = "Applying Scene-Aware Dynamic Leveling [${intensity.label}]: Window=${frameLenMs}ms, MaxGain=+${maxGain}dB, Smoothing Gauss=$gaussSize"
+        /**
+         * Assembles the audio filter chain string for FFmpeg Pass 2 based on normalization configuration
+         * and Pass 1 measured loudness telemetry.
+         */
+        fun buildFilterChain(
+            config: NormalizationConfig,
+            analysis: LoudnormAnalysis,
+            onLog: ((TerminalLogEntry) -> Unit)? = null
+        ): String {
+            return if (config.sceneLevelingEnabled) {
+                val intensity = config.sceneLevelingIntensity
+                val frameLenMs = (intensity.filterWindowSec * 1000).toInt()
+                val gaussSize = when (intensity) {
+                    SceneLevelingIntensity.SUBTLE -> 45
+                    SceneLevelingIntensity.BALANCED -> 31
+                    SceneLevelingIntensity.CONSISTENT -> 21
+                    SceneLevelingIntensity.CUSTOM -> 31
+                }
+                val maxGain = intensity.maxGainDb
+
+                onLog?.invoke(
+                    TerminalLogEntry(
+                        tag = LogTag.SCENE,
+                        message = "Applying Scene-Aware Dynamic Leveling [${intensity.label}]: Window=${frameLenMs}ms, MaxGain=+${maxGain}dB, Smoothing Gauss=$gaussSize"
+                    )
                 )
-            )
-            "dynaudnorm=f=$frameLenMs:g=$gaussSize:m=$maxGain:p=0.95:r=0.6,loudnorm=I=${config.targetLufs}:TP=${config.targetTruePeak}:LRA=${config.targetLra}:linear=true"
-        } else {
-            "loudnorm=I=${config.targetLufs}:TP=${config.targetTruePeak}:LRA=${config.targetLra}:measured_I=${analysis.inputI}:measured_TP=${analysis.inputTp}:measured_LRA=${analysis.inputLra}:measured_thresh=${analysis.inputThresh}:offset=${analysis.targetOffset}:linear=true"
+                "dynaudnorm=f=$frameLenMs:g=$gaussSize:m=$maxGain:p=0.95:r=0.6,loudnorm=I=${config.targetLufs}:TP=${config.targetTruePeak}:LRA=${config.targetLra}:linear=true"
+            } else {
+                "loudnorm=I=${config.targetLufs}:TP=${config.targetTruePeak}:LRA=${config.targetLra}:measured_I=${analysis.inputI}:measured_TP=${analysis.inputTp}:measured_LRA=${analysis.inputLra}:measured_thresh=${analysis.inputThresh}:offset=${analysis.targetOffset}:linear=true"
+            }
         }
     }
 
@@ -315,9 +323,5 @@ class FFmpegAudioNormalizer(private val context: Context) {
                 currentProcess = null
             }
         }
-    }
-
-    companion object {
-        private const val TAG = "FFmpegNormalizer"
     }
 }

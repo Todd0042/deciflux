@@ -51,4 +51,34 @@ object SecuritySanitizer {
         val ext = filename.substringAfterLast('.', "").lowercase()
         return ALLOWED_EXTENSIONS.contains(ext)
     }
+
+    /**
+     * Sanitizes user-supplied or external file paths to remove directory traversal tokens
+     * and non-printable control characters.
+     */
+    fun sanitizeFilePath(rawPath: String): String {
+        require(!rawPath.contains('\u0000')) { "Path contains forbidden null byte sequence" }
+        val normalized = rawPath.replace('\\', '/')
+        val components = normalized.split('/').filter { it.isNotEmpty() && it != "." }
+        val resolved = mutableListOf<String>()
+        for (comp in components) {
+            if (comp == "..") {
+                if (resolved.isNotEmpty()) resolved.removeAt(resolved.size - 1)
+            } else {
+                resolved.add(comp.replace(Regex("[^a-zA-Z0-9._\\-\\s()]"), "_"))
+            }
+        }
+        val prefix = if (normalized.startsWith("/")) "/" else ""
+        return prefix + resolved.joinToString("/")
+    }
+
+    /**
+     * Validates that an incoming URI conforms to approved Android content or file protocols.
+     */
+    fun isSafeContentUri(uriString: String): Boolean {
+        val lower = uriString.lowercase().trim()
+        return (lower.startsWith("content://") || lower.startsWith("file://")) &&
+                !lower.contains("javascript:") &&
+                !lower.contains('\u0000')
+    }
 }

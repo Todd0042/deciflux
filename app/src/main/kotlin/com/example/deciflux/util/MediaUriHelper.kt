@@ -28,7 +28,7 @@ object MediaUriHelper {
                 val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                 if (cursor.moveToFirst()) {
                     if (nameIndex != -1 && !cursor.isNull(nameIndex)) {
-                        filename = cursor.getString(nameIndex)
+                        filename = SecuritySanitizer.sanitizeFilename(cursor.getString(nameIndex))
                     }
                     if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) {
                         sizeBytes = cursor.getLong(sizeIndex)

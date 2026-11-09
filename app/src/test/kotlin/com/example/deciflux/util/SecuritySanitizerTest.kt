@@ -70,4 +70,29 @@ class SecuritySanitizerTest {
         assertFalse(SecuritySanitizer.isSupportedVideoExtension("script.sh"))
         assertFalse(SecuritySanitizer.isSupportedVideoExtension("archive.zip"))
     }
+
+    @Test
+    fun sanitizeFilePath_traversalSequence_resolvesSafely() {
+        val sanitized = SecuritySanitizer.sanitizeFilePath("/storage/emulated/0/../../etc/passwd")
+        assertEquals("/storage/etc/passwd", sanitized)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun sanitizeFilePath_nullByte_throwsException() {
+        SecuritySanitizer.sanitizeFilePath("/storage/video\u0000.mp4")
+    }
+
+    @Test
+    fun isSafeContentUri_validProtocols_returnsTrue() {
+        assertTrue(SecuritySanitizer.isSafeContentUri("content://media/external/video/media/123"))
+        assertTrue(SecuritySanitizer.isSafeContentUri("file:///storage/emulated/0/Movies/clip.mp4"))
+    }
+
+    @Test
+    fun isSafeContentUri_dangerousProtocols_returnsFalse() {
+        assertFalse(SecuritySanitizer.isSafeContentUri("javascript:alert(1)"))
+        assertFalse(SecuritySanitizer.isSafeContentUri("http://malicious.com/payload.apk"))
+        assertFalse(SecuritySanitizer.isSafeContentUri("content://media/\u0000payload"))
+    }
 }
+
