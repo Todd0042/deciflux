@@ -14,10 +14,9 @@
 [![Packaging: Standalone APK](https://img.shields.io/badge/Packaging-Standalone%20APK-A7F3D0.svg)](https://github.com/Todd0042/deciflux/releases)
 [![UI: Jetpack Compose Material 3](https://img.shields.io/badge/UI-Jetpack%20Compose%20Material%203-F472B6.svg)]()
 [![Architecture: arm64--v8a | armeabi--v7a | x86 | x86__64](https://img.shields.io/badge/ABI-Universal%20Native%20FFmpeg-38BDF8.svg)]()
-[![Engine: EBU R128 + dynaudnorm](https://img.shields.io/badge/DSP-EBU%20R128%20%7C%20dynaudnorm-34D399.svg)]()
-[![Signal Processing: ITU-R BS.1770](https://img.shields.io/badge/Signal%20Processing-ITU--R%20BS.1770--4%20Gating-0284C7.svg)]()
-[![Acoustic Modeling: dynaudnorm](https://img.shields.io/badge/Acoustic%20Modeling-Sliding%20Gaussian%20RMS-10B981.svg)]()
-[![Statistical Analysis: Dual--Pass Gating](https://img.shields.io/badge/Statistical%20Analysis-Dual--Stage%20Gated%20Loudness-8B5CF6.svg)]()
+[![Loudness Standards: EBU R128 / ITU-R BS.1770](https://img.shields.io/badge/Standards-EBU%20R128%20%2F%20ITU--R%20BS.1770-0284C7.svg)]()
+[![Dynamic Leveling: dynaudnorm](https://img.shields.io/badge/Dynamic%20Leveling-dynaudnorm-10B981.svg)]()
+[![Lossless Video: -c:v copy](https://img.shields.io/badge/Video-Lossless%20Passthrough%20(-c%3Av%20copy)-8B5CF6.svg)]()
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Creator-F16061?style=flat&logo=ko-fi&logoColor=white)](https://ko-fi.com/todd0042)
 
 > **Deciflux is a modern native Android touch GUI app built with Jetpack Compose and Material 3 for high-speed, professional batch video audio normalization. Re-encodes audio tracks to broadcast loudness standards (EBU R128 / ITU-R BS.1770) or scene-by-scene dynamic leveling with zero video re-encoding (`-c:v copy`), running up to 30x realtime directly on your device with 100% offline privacy.**
