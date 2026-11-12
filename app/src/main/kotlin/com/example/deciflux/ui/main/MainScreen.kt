@@ -12,6 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +46,7 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +66,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,6 +121,19 @@ fun MainScreen(
     val overallProgress by viewModel.overallProgress.collectAsStateWithLifecycle()
     val currentSpeed by viewModel.currentSpeed.collectAsStateWithLifecycle()
     val currentEta by viewModel.currentEta.collectAsStateWithLifecycle()
+
+    // Replace Original is remembered between launches, so when the app opens with it on, say so briefly.
+    // Shown once per app session (not again after rotating or coming back to this screen).
+    var overwriteReminderDone by rememberSaveable { mutableStateOf(false) }
+    var showOverwriteReminder by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!overwriteReminderDone && config.replaceOriginal) {
+            overwriteReminderDone = true
+            showOverwriteReminder = true
+            kotlinx.coroutines.delay(OVERWRITE_REMINDER_MILLIS)
+            showOverwriteReminder = false
+        }
+    }
 
     // Dialog & Sheet States
     var showPresetSheet by remember { mutableStateOf(false) }
@@ -199,6 +216,8 @@ fun MainScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 14.dp)
         ) {
+            OverwriteReminderBanner(visible = showOverwriteReminder, onDismiss = { showOverwriteReminder = false })
+
             IntakeButtonsRow(
                 isScanningFolder = isScanningFolder,
                 onSingleClick = {
@@ -488,6 +507,43 @@ private fun IntakeButtonsRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Scanning folder for video tracks...", fontSize = 12.sp, color = DecifluxLuminousViolet)
             }
+        }
+    }
+}
+
+private const val OVERWRITE_REMINDER_MILLIS = 6_000L
+
+/** A slim, non-blocking reminder that Replace Original is on. Fades out on its own; a tap hides it at once. */
+@Composable
+private fun OverwriteReminderBanner(visible: Boolean, onDismiss: () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp, bottom = 4.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(DecifluxWarningAmber.copy(alpha = 0.12f))
+                .border(1.dp, DecifluxWarningAmber.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = null,
+                tint = DecifluxWarningAmber,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Replace Original is on: finished videos will overwrite the original files.",
+                color = DecifluxWarningAmber,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
