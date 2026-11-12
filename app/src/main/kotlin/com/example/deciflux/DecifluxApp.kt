@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
+import com.example.deciflux.data.BatchQueueRepository
 import com.yausername.ffmpeg.FFmpeg
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +19,9 @@ class DecifluxApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // Restore the options saved last time before any screen is shown (a small SharedPreferences read)
+        BatchQueueRepository.restoreSavedConfig(this)
 
         // Safe asynchronous initialization so app startup is instant and never crashes
         appScope.launch {

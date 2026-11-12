@@ -22,6 +22,20 @@ object BatchQueueRepository {
     private val _config = MutableStateFlow(NormalizationConfig())
     val config: StateFlow<NormalizationConfig> = _config.asStateFlow()
 
+    /** Application context used to save the options; set by [restoreSavedConfig] at app start. */
+    @Volatile
+    private var appContext: Context? = null
+
+    /**
+     * Loads the options saved last time (called once from DecifluxApp.onCreate, before any screen is shown) and
+     * remembers the context so later changes are saved. Falls back to the defaults when nothing was saved.
+     */
+    fun restoreSavedConfig(context: Context) {
+        val app = context.applicationContext
+        appContext = app
+        _config.value = SettingsStore.load(app)
+    }
+
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
 
@@ -87,6 +101,7 @@ object BatchQueueRepository {
 
     fun updateConfig(newConfig: NormalizationConfig) {
         _config.value = newConfig
+        appContext?.let { SettingsStore.save(it, newConfig) }   // remembered for the next launch
         val sceneMsg = if (newConfig.sceneLevelingEnabled) {
             "Scene-by-Scene: ON (${newConfig.sceneLevelingIntensity.label})"
         } else {
