@@ -9,7 +9,7 @@
 # 🔊 Deciflux — Android Video Audio Normalizer (Jetpack Compose Mobile Touch GUI)
 
 [![Version](https://img.shields.io/badge/Version-1.0.0-7CD4FD.svg)](https://github.com/Todd0042/deciflux/releases)
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-6EE7B7.svg)](LICENSE)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-00f0ff.svg)](LICENSE)
 [![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-D0BCFF.svg)](https://github.com/Todd0042/deciflux/releases)
 [![Packaging: Standalone APK](https://img.shields.io/badge/Packaging-Standalone%20APK-A7F3D0.svg)](https://github.com/Todd0042/deciflux/releases)
 [![UI: Jetpack Compose Material 3](https://img.shields.io/badge/UI-Jetpack%20Compose%20Material%203-F472B6.svg)]()
@@ -433,7 +433,7 @@ Deciflux bundles FFmpeg built under LGPL/GPL licensing terms via `youtubedl-andr
 ---
 
 <p align="center">
-  If you find Deciflux useful for your audio workflows, consider supporting open-source development:<br/><br/>
+  If you find Deciflux useful for your audio workflows, consider supporting its development:<br/><br/>
   <a href="https://ko-fi.com/todd0042" target="_blank">
     <img src="https://img.shields.io/badge/☕_Support_Deciflux_on_Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Support on Ko-fi">
   </a>
